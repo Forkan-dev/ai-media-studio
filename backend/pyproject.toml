@@ -1,0 +1,22 @@
+[project]
+name = "ai-media-studio"
+version = "0.1.0"
+description = "AI Media Studio backend"
+authors = [
+    { name = "Forkan alam", email = "forkanalam295@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "chatterbox-tts>=0.1.7",
+    "fastapi>=0.163.1",
+    "httpx>=0.28.1",
+    "kokoro>=0.9.4",
+    "mlx-whisper>=0.4.3",
+    "pydantic-settings>=2.16.3",
+    "pyyaml>=6.0.3",
+    "setuptools<81",
+    "soundfile>=0.14.0",
+    "sqlalchemy>=2.1.9",
+    "uvicorn[standard]>=0.54.0",
+]
+
