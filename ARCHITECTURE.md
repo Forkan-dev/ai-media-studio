@@ -47,9 +47,14 @@ See [README.md](README.md) for what the product does and [TASKS.md](TASKS.md) fo
 ## 3. Pipeline (LangGraph nodes)
 
 ```
-topic_research → script → storyboard → fact_check ──(score < threshold, retries < 2)──► script
-                                           │
-                                           ▼ pass
+topic_discovery → topic_ranking → research → write → edit → review ──(below minimum, retries < 2)──► write
+                                                                   │                                (with critic notes)
+                                                                   │ still below minimum after 2 retries
+                                                                   ├──────────────► status = below_quality (never uploaded)
+                                                                   ▼ pass
+                                                              fact_check → storyboard
+                                                                   │
+                                                                   ▼
                 visuals → voice → subtitles → render → thumbnail_metadata
                                                              │
                                                              ▼
@@ -69,18 +74,48 @@ topic_research → script → storyboard → fact_check ──(score < threshold
 
 | Node | Input | Output | Service |
 |---|---|---|---|
-| `topic_research` | brand config, topic history, past stats | ranked topic list and chosen topic | web search + LLM |
-| `script` | topic, format (short/long), prompt template | hook ×3, body, CTA | LLM |
-| `storyboard` | script | scenes[]: narration, image_prompt, camera_motion, on_screen_text | LLM |
-| `fact_check` | script + search results | claims report, scores (hook, clarity, originality) | search + LLM |
+| `topic_discovery` | brand niche, search queries | ~30 candidate topics (dupes vs. topic memory removed) | SearXNG + LLM |
+| `topic_ranking` | candidates, past stats | scored list (curiosity, relatable, humor potential, evidence, novelty) → best topic | LLM (**Ranker**) |
+| `research` | chosen topic | research notes: key facts + source URLs (3–5 sources) | SearXNG + page fetch + LLM |
+| `write` | research notes, brand tone, script structure, critic notes (on retry) | 3 hooks + 2–3 full script drafts | LLM (**Writer**) |
+| `edit` | drafts | polished drafts: wording, sentence flow, pacing, humor, length | LLM (**Editor**) |
+| `review` | polished drafts, research notes | rubric scores + reasons per draft → best draft, pass / fail | LLM (**Reviewer**) |
+| `fact_check` | best draft + research notes | claim-by-claim report; unsupported claims removed | LLM |
+| `storyboard` | final script, brand look | scenes[]: narration, image_prompt, camera move, transition, SFX cue, caption emphasis | LLM |
 | `visuals` | scenes, brand style, LoRA | image per scene (+ optional AI clip) | ComfyUI / SDXL |
-| `voice` | scene narration, brand voice | audio per scene | Kokoro |
+| `voice` | scene narration, brand voice | audio per scene | Kokoro or Chatterbox |
 | `subtitles` | scene audio | word timings → caption file (ASS) | Whisper |
 | `render` | images, audio, captions, music | `final_9x16.mp4` / `final_16x9.mp4` | FFmpeg |
 | `thumbnail_metadata` | script, topic | title, description, tags, hashtags, thumbnail | LLM + SDXL |
 | `human_approval` | everything above | approve / reject / edits / schedule | UI |
 | `publish` | approved job, schedule slot | platform video IDs | YouTube / Facebook API |
 | `analytics` | platform IDs | Stat rows at 24h / 7d / 30d | platform APIs |
+
+### Script quality gate (minimum quality to upload)
+
+The goal is not "perfect". The goal is that **no video below a minimum bar is ever uploaded**.
+
+- **AI roles:** each role is a separate prompt with its own instructions and temperature.
+
+  | Role | Job | Temperature |
+  |---|---|---|
+  | Ranker | Picks the topic | low |
+  | Writer | Creates hooks and drafts | high |
+  | Editor | Fixes sentences | medium |
+  | Reviewer | Judges the drafts | low |
+
+- **Rubric (each criterion scored 1–10):** hook, accuracy vs. research notes, clarity, humor/tone fit, pacing, originality.
+- **Pass rule:** average ≥ `min_quality_score` (brand config, default 7) **and** no criterion below 5 **and** accuracy ≥ 7.
+- **Fail:** the Writer rewrites using the Reviewer's notes, up to 2 retries.
+- **Still failing after 2 retries:** job status `below_quality`. It is shown on the dashboard and never sent to approval or upload.
+- **Bias control:** the Reviewer never sees which draft is newest, compares several candidates, and can run on a larger model (`reviewer_model` in Settings, e.g. Qwen3 14B).
+- **Human review stays the final gate** before publishing.
+
+### Continuous production
+
+- A **scheduler** adds jobs for each brand from its schedule (e.g. 3 per day).
+- **One worker** processes them in order and resumes after a crash.
+- Finished videos wait on the Review screen.
 
 **Resume model:** each node writes its artifacts to `storage/{job_id}/...` and a row in DB (`Job.current_step`, `Asset`). LangGraph checkpointer uses SQLite. On restart, the worker picks up `running` jobs and continues from the last checkpoint.
 
@@ -96,7 +131,7 @@ Brand ──< Job ──< Scene ──< Asset
 | Table | Key fields |
 |---|---|
 | **Brand** | id, slug, name, niche, language, voice, visual_style, lora, music_style, prompt_set, schedule (cron per platform), accounts, series_counter, rules |
-| **Job** | id, brand_id, format (short/long/both), duration, status (queued/running/awaiting_approval/approved/scheduled/published/failed/rejected), current_step, retries, topic, script_json, scores_json, fact_check_json, error, created/updated |
+| **Job** | id, brand_id, format (short/long/both), duration, status (queued/running/below_quality/awaiting_approval/approved/scheduled/published/failed/rejected), current_step, retries, topic, script_json, scores_json, fact_check_json, error, created/updated |
 | **Scene** | id, job_id, index, narration, image_prompt, camera_motion, on_screen_text, duration, version |
 | **Asset** | id, job_id, scene_id?, kind (image/clip/audio/captions/render/thumbnail/music), path, meta_json, version |
 | **Publish** | id, job_id, platform, scheduled_at, published_at, platform_video_id, status, ai_disclosure |
@@ -151,9 +186,10 @@ Each service is a thin client with one interface, configured by URL/env, so loca
 | `llm.py` | Ollama chat / JSON-mode calls (Qwen3), prompt template rendering |
 | `search.py` | Web search + trend sources for research and fact-check |
 | `comfy.py` | Submit ComfyUI workflow JSON, poll, download images |
-| `tts.py` | Kokoro narration per scene |
+| `tts.py` | Narration per scene: Kokoro (fast) or Chatterbox (emotion, voice cloning) |
 | `whisper.py` | Word-level timestamps |
-| `render.py` | FFmpeg graph building: Ken Burns, transitions, ducking, ASS captions, aspect ratios |
+| `captions.py` | Word timings → animated word-by-word ASS captions |
+| `render.py` | FFmpeg graph building: camera moves, transitions, SFX, ducking, captions, aspect ratios |
 | `youtube.py` | OAuth, upload, schedule, AI-disclosure flag, stats |
 | `facebook.py` | Page token, upload Reels/videos, schedule, insights |
 | `dedupe.py` | Topic and script similarity checks (embeddings/hash) |
@@ -222,7 +258,8 @@ storage/{job_id}/
 | Text | Qwen3 8B (Ollama) | Can confirm false facts. Fact-check only against search results. |
 | Search | SearXNG (self-hosted) or Brave Search API | Needed for topic research + fact-check. |
 | Images | SDXL + anime/realistic fine-tune + brand LoRA | Slowest step (~20–60s/image). No text in images: all text through FFmpeg. |
-| Voice | Kokoro | Languages: EN, JA, ZH, ES, FR, HI, IT, PT only. |
+| Voice | Kokoro (54 voices) | Fast. No emotion control. Languages: EN, JA, ZH, ES, FR, HI, IT, PT only. |
+| Voice (emotion) | Chatterbox | Emotion (`exaggeration`) + voice cloning. ~20× slower than Kokoro. |
 | Captions | Whisper (mlx-whisper / whisper.cpp on Mac) | none |
 | Embeddings | Small embedding model + sqlite-vec / numpy | For dedupe only. No RAG, no separate vector DB. |
 
@@ -233,9 +270,12 @@ storage/{job_id}/
 
 ## 12. Video look
 
-Still images, one every 3–5s, with:
-- Pan/zoom (Ken Burns) and 2.5D parallax from a depth map
-- Transitions: fade, slide, flash (FFmpeg `xfade`)
+Still images, one every 2–5s, with:
+- **Parametric camera moves:** each move = start (zoom, x, y) → end (zoom, x, y) with easing, randomized within brand limits. Gives unlimited variations, not a fixed list.
+- Extra moves: shake on impact words, slow rotate, perspective tilt
+- 2.5D parallax from a depth map
+- Transitions: any of ~50 FFmpeg `xfade` types, limited per brand (e.g. playful: slide, circle open, zoom, pixelize)
+- Sound effects (pop, whoosh, boing) on scene changes and jokes, cued by the storyboard
 - Overlays: rain, sakura, light, particles
 - Word-by-word captions, narration, ducked music
 - Same characters through the brand LoRA
@@ -251,7 +291,19 @@ Platforms demonetize repetitive or mass-produced content. Every video must diffe
 - Varied camera motions and transitions
 - New random seed per image; higher temperature for hooks
 
-## 14. Deployment modes
+## 14. First brand: Mind Facts
+
+| Setting | Value |
+|---|---|
+| Niche | Psychology facts |
+| Image style | Doodle (fixed for every video), using SDXL with a doodle LoRA |
+| Tone | Funny, smart, simple |
+| Transitions | Playful: slide, circle open, zoom, pixelize |
+| Sound | SFX (pop, whoosh, boing) and light music |
+| Voice | One fixed, energetic voice |
+| Format | 9:16 Shorts, ~60s |
+
+## 15. Deployment modes
 | Mode | How |
 |---|---|
 | Local (16GB) | Ollama, ComfyUI and Kokoro on localhost. One worker. Models swapped sequentially. |

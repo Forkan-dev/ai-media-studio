@@ -83,5 +83,77 @@ It runs on **local hardware (16GB target) or cloud GPUs with no code changes**.
 
 ---
 
+## Setup (manual, macOS / Apple Silicon)
+
+### Tools and models
+
+| Name | Purpose | Size | Install |
+|---|---|---|---|
+| uv | Python env + packages | small | brew |
+| FFmpeg **full** (with libass) | Render, captions | ~60 MB | brew (`ffmpeg-full`, not `ffmpeg`) |
+| espeak-ng | Kokoro phonemes fallback | small | brew |
+| Ollama + **Qwen3 8B** | Writing / scoring | ~5 GB | brew + `ollama pull` |
+| Docker (Colima or Docker Desktop) + **SearXNG** | Web search | ~200 MB | docker |
+| **ComfyUI** | Image generation server | ~3 GB (PyTorch) | git clone |
+| **Animagine XL 4.0 (opt)** | Anime images | 6.9 GB | download |
+| **Juggernaut XI** | Realistic images | 7.1 GB | download |
+| **DMD2 LoRA** | Fast images (8 steps) | 0.4 GB | download |
+| Kokoro-82M | Voice (fast, 54 voices) | ~0.3 GB | auto on first use |
+| Chatterbox | Voice (emotion, cloning) | ~3 GB | auto on first use |
+| Whisper large-v3-turbo (MLX) | Word timings | ~1.6 GB | auto on first use |
+
+### Commands
+
+```bash
+# 1. System tools
+brew install uv ffmpeg-full ollama espeak-ng   # if plain ffmpeg is installed: brew uninstall ffmpeg first
+brew services start ollama
+ollama pull qwen3:8b
+
+# 2. Backend Python packages
+cd backend && uv sync && cd ..
+
+# 3. SearXNG (web search, port 8080, JSON enabled)
+mkdir -p infra/searxng
+cat > infra/searxng/settings.yml <<EOF
+use_default_settings: true
+server:
+  secret_key: "$(openssl rand -hex 32)"
+  limiter: false
+search:
+  formats: [html, json]
+EOF
+docker run -d --name searxng --restart unless-stopped -p 8080:8080 \
+  -v "$PWD/infra/searxng:/etc/searxng" searxng/searxng
+
+# 4. ComfyUI (outside the project)
+mkdir -p ~/AI && cd ~/AI
+git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git && cd ComfyUI
+uv venv --python 3.12 && uv pip install -r requirements.txt
+
+# 5. Image models (resumable downloads)
+HF=https://huggingface.co
+curl -L -C - -o models/checkpoints/animagine-xl-4.0-opt.safetensors \
+  $HF/cagliostrolab/animagine-xl-4.0/resolve/main/animagine-xl-4.0-opt.safetensors
+curl -L -C - -o models/checkpoints/Juggernaut-XI-byRunDiffusion.safetensors \
+  $HF/RunDiffusion/Juggernaut-XI-v11/resolve/main/Juggernaut-XI-byRunDiffusion.safetensors
+curl -L -C - -o models/loras/dmd2_sdxl_4step_lora_fp16.safetensors \
+  $HF/tianweiy/DMD2/resolve/main/dmd2_sdxl_4step_lora_fp16.safetensors
+```
+
+### Run
+
+```bash
+# ComfyUI (keep running)
+cd ~/AI/ComfyUI && .venv/bin/python main.py --listen 127.0.0.1 --port 8188
+
+# Health check: all must be OK
+cd backend && uv run python -m app.health
+```
+
+Service URLs and model names are set in `.env` (see `.env.example`). To use a different GPU machine (for example an NVIDIA PC), run ComfyUI there and set `COMFY_URL` to its address.
+
+---
+
 ## Long-term direction
 The same engine runs your own channels today and is designed to grow into a **SaaS platform for creators and businesses**: multi-tenant brands, per-user accounts and hosted GPU workers.

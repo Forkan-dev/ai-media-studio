@@ -8,8 +8,8 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 
 | Phase | Goal | Status |
 |---|---|---|
-| 0 | Project setup | In progress |
-| 1 | Week 1–2: One video end to end | Not started |
+| 0 | Project setup | Done |
+| 1 | Week 1–2: One video end to end | In progress |
 | 2 | Week 3: Subtitles, music, thumbnails, both aspect ratios | Not started |
 | 3 | Week 4: LangGraph flow, fact-check loop, job queue with resume | Not started |
 | 4 | Week 5: Vue UI (Review screen first) | Not started |
@@ -17,7 +17,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 | 6 | Week 7+: Analytics feedback, Long→Shorts, AI clips, series mode | Not started |
 | 7 | Future: SaaS readiness | Not started |
 
-**Overall: 0 / 8 phases complete.** Update this table as phases finish.
+**Overall: 1 / 8 phases complete.** Update this table as phases finish.
 
 ---
 
@@ -28,7 +28,9 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [x] `.env.example` + settings loader (`DATABASE_URL`, service URLs, storage path)
 - [x] Install Ollama and FFmpeg
 - [x] Pull Qwen3 8B
-- [ ] Install ComfyUI + SDXL
+- [x] Install ComfyUI + SDXL (Animagine XL 4.0, Juggernaut XI, DMD2 LoRA)
+- [x] Replace FFmpeg with `ffmpeg-full` (libass for captions)
+- [x] Manual setup guide in README
 - [x] Install Kokoro (54 voices) + `services/tts.py`
 - [x] Install Chatterbox (emotion + voice cloning) as second TTS engine
 - [x] Install Whisper (mlx-whisper, large-v3-turbo) + `services/whisper.py`
@@ -38,24 +40,38 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 ## Phase 1 (Week 1–2): One video end to end
 **Goal:** run a CLI command and get one finished MP4.
 - [ ] DB models: Brand, Job, Scene, Asset (SQLAlchemy, SQLite)
-- [ ] Brand YAML schema (Pydantic) + loader + first brand config
+- [ ] Brand YAML schema (Pydantic) + loader + first brand config (**Mind Facts**)
+- [ ] Doodle LoRA for SDXL + Mind Facts image style test
 - [ ] `services/llm.py`: Ollama client with JSON output
-- [ ] Prompt templates: script (short), storyboard
-- [ ] Script generation (hook, body, CTA)
-- [ ] Storyboard: scenes with narration, image_prompt, camera_motion, on_screen_text
-- [ ] `services/comfy.py` + base SDXL workflow JSON → one image per scene
-- [ ] `services/tts.py`: Kokoro narration per scene
-- [ ] `services/render.py`: FFmpeg stills + pan/zoom + concat audio → MP4
+- [ ] `services/search.py`: SearXNG search + page text fetch
+- [ ] **Script brain** (prompt template per role in `prompts/<brand>/`):
+  - [ ] Topic discovery: ~30 candidates from search, dupes removed
+  - [ ] Ranker: score topics (curiosity, relatable, humor, evidence, novelty) → best
+  - [ ] Research: 3–5 sources → key facts + URLs
+  - [ ] Writer: 3 hooks + 2–3 drafts with rotating structures
+  - [ ] Editor: polish wording, flow, pacing, humor
+  - [ ] Reviewer: rubric scores + reasons → best draft
+  - [ ] Quality gate: pass rule, max 2 rewrites with critic notes, else `below_quality`
+  - [ ] Fact-check: claims vs. research notes
+- [ ] Storyboard: scenes with narration, image_prompt, camera move, transition, SFX cue
+- [x] `services/comfy.py` + base SDXL workflow JSON → one image per scene
+- [x] `services/tts.py`: Kokoro + Chatterbox narration
+- [x] `services/render.py`: FFmpeg stills + pan/zoom + crossfade + audio + captions → MP4
 - [ ] Save every step's output to `storage/{job_id}/` + DB
 - [ ] CLI: `python -m app.cli make --brand <slug>`
 - [ ] ✅ Milestone: first full video rendered
 
 ## Phase 2 (Week 3): Polish the output
-- [ ] `services/whisper.py`: word-level timestamps
-- [ ] Animated word-by-word captions (ASS) burned in
+- [x] `services/whisper.py`: word-level timestamps
+- [x] Animated word-by-word captions (ASS) burned in (`services/captions.py`)
+- [ ] Caption fix: active word baseline, position lower, bigger
+- [ ] Parametric camera moves (start→end zoom/x/y, easing, random within brand limits)
+- [ ] Shake / rotate / perspective moves for impact moments
+- [ ] Sound effects library + SFX cues from storyboard (pop, whoosh, boing)
+- [ ] Varied shot types (wide/medium/close-up) in storyboard
 - [ ] Music library (royalty-free) + selection by brand music style
 - [ ] Audio ducking (sidechain) under narration
-- [ ] Scene transitions (fade, slide, flash), varied per video
+- [ ] Scene transitions: random from brand's allowed `xfade` types
 - [ ] 2.5D parallax from depth map
 - [ ] Overlays: rain, sakura, light, particles
 - [ ] Anime SDXL fine-tune (Animagine/Illustrious) workflow
@@ -68,11 +84,11 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 
 ## Phase 3 (Week 4): Orchestration and reliability
 - [ ] LangGraph graph with all nodes
-- [ ] Topic research node: web search + trends + LLM scoring
+- [ ] Script brain steps as LangGraph nodes (discovery → ranking → research → write → edit → review → fact_check)
 - [ ] Topic memory: skip topics already covered (Topic table + similarity)
-- [ ] Fact-check + quality node (scores hook, clarity, originality)
-- [ ] Loop back to script when below threshold (max 2 retries)
-- [ ] Hook A/B: generate 3 hooks
+- [ ] `reviewer_model` setting (e.g. Qwen3 14B as Reviewer)
+- [ ] `below_quality` job status shown on dashboard
+- [ ] Scheduler: add jobs per brand from its schedule
 - [ ] Hook memory (past hooks passed as "do not reuse")
 - [ ] Embeddings in sqlite-vec + script similarity check
 - [ ] 5–10 rotating script structures per format
@@ -119,6 +135,15 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Analytics screen: views, retention, revenue per brand, top topics
 - [ ] Feedback loop: winning topics/formats boost topic scoring
 - [ ] Long → Shorts: auto-cut 3–5 Shorts from each long video
+- [ ] **Video → Shorts clipper** (any long video, incl. gameplay; own/permitted content only)
+  - [ ] Download with yt-dlp
+  - [ ] Whisper transcript with word times
+  - [ ] Qwen3 scores transcript segments (hook, peaks, jokes)
+  - [ ] Gameplay: audio-peak + scene-change detection (FFmpeg, PySceneDetect)
+  - [ ] Cut best 30–60s clips
+  - [ ] 9:16 crop: face tracking (MediaPipe), split layout or blurred background for gameplay
+  - [ ] Word-by-word captions + render
+  - [ ] Clips go to the Review screen
 - [ ] Optional AI video clips for key scenes
 - [ ] Series mode: auto-numbered "Lesson N"
 - [ ] Character LoRA per brand (training guide + workflow)
@@ -139,3 +164,4 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 |---|---|
 | 2026-11-17 | Project docs created (README, ARCHITECTURE, TASKS). No code yet. |
 | 2026-11-17 | Added models/limits, video look, uniqueness rules, search, sqlite-vec. |
+| 2026-11-19 | Phase 0 done. Script brain design (Ranker/Writer/Editor/Reviewer + quality gate), Mind Facts brand, parametric camera moves, SFX. Wan video removed. |
