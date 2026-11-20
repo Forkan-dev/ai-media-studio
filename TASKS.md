@@ -40,17 +40,19 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 ## Phase 1 (Week 1–2): One video end to end
 **Goal:** run a CLI command and get one finished MP4.
 - [ ] DB models: Brand, Job, Scene, Asset (SQLAlchemy, SQLite)
-- [ ] Brand YAML schema (Pydantic) + loader + first brand config (**Mind Facts**)
-- [ ] Doodle LoRA for SDXL + Mind Facts image style test
-- [ ] `services/llm.py`: Ollama client with JSON output
+- [x] Brand YAML schema (Pydantic) + loader + first brand config (**Mind Facts**)
+- [x] Doodle LoRA for SDXL + Mind Facts image style test (Doodle Redmond, testing only)
+- [ ] Own Mind Facts doodle LoRA before monetized publishing (license-safe)
+- [x] `services/llm.py`: Ollama client with JSON output (schema-constrained, Pydantic-validated)
+- [x] Prompt templates as files (`prompts/<brand>/<role>.md`, `app/prompts.py`)
 - [ ] `services/search.py`: SearXNG search + page text fetch
 - [ ] **Script brain** (prompt template per role in `prompts/<brand>/`):
   - [ ] Topic discovery: ~30 candidates from search, dupes removed
   - [ ] Ranker: score topics (curiosity, relatable, humor, evidence, novelty) → best
   - [ ] Research: 3–5 sources → key facts + URLs
-  - [ ] Writer: 3 hooks + 2–3 drafts with rotating structures
+  - [~] Writer: 3 hooks + draft (done); 2–3 drafts with rotating structures (todo)
   - [ ] Editor: polish wording, flow, pacing, humor
-  - [ ] Reviewer: rubric scores + reasons → best draft
+  - [~] Reviewer: rubric scores + reasons + pass rule in code (done); per-hook accuracy check (todo)
   - [ ] Quality gate: pass rule, max 2 rewrites with critic notes, else `below_quality`
   - [ ] Fact-check: claims vs. research notes
 - [ ] Storyboard: scenes with narration, image_prompt, camera move, transition, SFX cue

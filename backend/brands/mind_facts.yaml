@@ -1,0 +1,33 @@
+slug: mind_facts
+name: Mind Facts
+niche: psychology facts
+language: en
+tone: funny, smart and simple; explain one surprising psychology fact like a friend would
+format: short            # short = 9:16, long = 16:9
+duration: 60             # target length in seconds
+
+voice:
+  engine: kokoro         # kokoro (fast) | chatterbox (emotion)
+  voice: am_michael
+  speed: 1.05
+
+images:
+  checkpoint: Juggernaut-XI-byRunDiffusion.safetensors
+  lora: DoodleRedmond-Doodle-DoodleRedm.safetensors   # testing only: license unclear for monetized use
+  lora_weight: 1.0
+  style: doodle, DoodleRedm, hand-drawn doodle illustration, black marker lines, simple shapes, white paper background, playful, minimal color accents
+  negative: photo, realistic, 3d render, text, letters, watermark, signature, blurry, deformed hands
+  steps: 30
+  cfg: 4.5
+  sampler: dpmpp_2m
+  scheduler: karras
+
+look:
+  motions: [zoom_in, zoom_out, pan_left, pan_right]
+  transitions: [slideleft, circleopen, zoomin, pixelize]
+  transition_seconds: 0.4
+  caption_font_size: 96
+  caption_max_words: 3
+
+prompts: mind_facts      # folder in backend/prompts/
+min_quality_score: 7     # Reviewer pass mark (1-10)
