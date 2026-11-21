@@ -72,3 +72,8 @@ def generate_image(spec: ImageSpec, out_path: Path, timeout: float = 600) -> Pat
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(data)
     return out_path
+
+
+def free_memory() -> None:
+    """Unload SDXL from memory so another model (e.g. the LLM) can use it."""
+    httpx.post(f"{settings.comfy_url}/free", json={"unload_models": True, "free_memory": True}, timeout=60)

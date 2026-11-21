@@ -12,12 +12,14 @@ class Word:
     end: float
 
 
-def transcribe_words(audio_path: Path, language: str | None = None) -> list[Word]:
-    """Return every spoken word with its start and end time in seconds."""
+def transcribe_words(audio_path: Path, language: str | None = None, script: str | None = None) -> list[Word]:
+    """Return every spoken word with its start and end time in seconds.
+    `script`: the known text, so names and terms are spelled correctly (e.g. "Barry Manilow")."""
     import mlx_whisper
 
     result = mlx_whisper.transcribe(
-        str(audio_path), path_or_hf_repo=MODEL, word_timestamps=True, language=language
+        str(audio_path), path_or_hf_repo=MODEL, word_timestamps=True, language=language,
+        initial_prompt=script,
     )
     return [
         Word(w["word"].strip(), round(w["start"], 2), round(w["end"], 2))

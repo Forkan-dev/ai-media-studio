@@ -6,7 +6,7 @@ from app.prompts import render
 from app.services.llm import chat_json
 
 WORDS_PER_SECOND = 2.5  # typical narration pace
-WORDS_PER_SENTENCE = 10  # small models follow a sentence count better than a word count
+WORDS_PER_SENTENCE = 13  # measured for Qwen3.5; small models follow a sentence count better than a word count
 
 
 class Draft(BaseModel):

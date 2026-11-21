@@ -21,6 +21,7 @@ class Scene:
     image: Path
     duration: float  # seconds this scene is on screen
     motion: str = "zoom_in"
+    transition: str = "fade"  # FFmpeg xfade type INTO this scene (ignored for the first scene)
 
 
 def _scene_filter(i: int, frames: int, motion: str, w: int, h: int, fps: int) -> str:
@@ -50,7 +51,7 @@ def render_video(
     for i in range(1, len(scenes)):
         offset += scenes[i - 1].duration
         filters.append(
-            f"[{prev}][v{i}]xfade=transition=fade:duration={transition}:offset={offset:.3f}[x{i}]"
+            f"[{prev}][v{i}]xfade=transition={scenes[i].transition}:duration={transition}:offset={offset:.3f}[x{i}]"
         )
         prev = f"x{i}"
 

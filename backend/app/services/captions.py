@@ -4,7 +4,8 @@ from pathlib import Path
 from app.services.whisper import Word
 
 HIGHLIGHT = r"{\c&H00E5FF&}"  # ASS colours are BGR: this is yellow
-RESET = r"{\r}"
+RESET = r"{\c&HFFFFFF&}"  # back to white only; a full style reset shifted the line
+BOTTOM_MARGIN = 0.2  # captions sit 20% above the bottom edge, clear of YouTube/Reels buttons
 
 HEADER = """[Script Info]
 ScriptType: v4.00+
@@ -13,7 +14,7 @@ PlayResY: {h}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Alignment, Outline, Shadow, MarginL, MarginR, MarginV
-Style: Word,Arial,{size},&H00FFFFFF,&H00000000,&H80000000,-1,5,6,2,60,60,0
+Style: Word,Arial,{size},&H00FFFFFF,&H00000000,&H80000000,-1,2,6,2,60,60,{margin_v}
 
 [Events]
 Format: Layer, Start, End, Style, Text
@@ -43,8 +44,9 @@ def write_ass(
     words: list[Word], out_path: Path, size: tuple[int, int] = (1080, 1920),
     font_size: int = 96, max_words: int = 3,
 ) -> Path:
-    """Show each phrase while it is spoken, with the current word highlighted."""
-    lines = [HEADER.format(w=size[0], h=size[1], size=font_size)]
+    """Show each phrase while it is spoken, bottom middle, with the current word highlighted."""
+    margin_v = int(size[1] * BOTTOM_MARGIN)
+    lines = [HEADER.format(w=size[0], h=size[1], size=font_size, margin_v=margin_v)]
     for chunk in _chunks(words, max_words):
         for i, word in enumerate(chunk):
             end = chunk[i + 1].start if i + 1 < len(chunk) else word.end

@@ -2,7 +2,7 @@
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import settings
 from app.services.render import MOTIONS
@@ -16,16 +16,36 @@ class Voice(BaseModel):
     exaggeration: float = 0.5  # chatterbox: emotion intensity
 
 
+class ImageStyle(BaseModel):
+    """A selectable look. Add a new block in the brand YAML to add a style: no code change."""
+    lora_weight: float = 1.0
+    character: str  # main character; the code inserts it into every scene prompt
+    others: str = "simple background figures in the same style"  # other people in scenes
+    style: str  # added to every image prompt
+    negative: str = ""
+
+
 class Images(BaseModel):
     checkpoint: str
     lora: str | None = None
-    lora_weight: float = 1.0
-    style: str  # added to every image prompt
-    negative: str = ""
+    default_style: str
+    styles: dict[str, ImageStyle]
     steps: int = 30
     cfg: float = 4.5
     sampler: str = "dpmpp_2m"
     scheduler: str = "karras"
+
+    @model_validator(mode="after")
+    def default_exists(self):
+        if self.default_style not in self.styles:
+            raise ValueError(f"default_style '{self.default_style}' not in styles {sorted(self.styles)}")
+        return self
+
+    def style(self, name: str | None = None) -> ImageStyle:
+        name = name or self.default_style
+        if name not in self.styles:
+            raise ValueError(f"unknown image style '{name}'; available: {sorted(self.styles)}")
+        return self.styles[name]
 
 
 class Look(BaseModel):

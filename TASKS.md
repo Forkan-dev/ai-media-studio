@@ -56,14 +56,21 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
   - [ ] Editor: polish wording, flow, pacing, humor
   - [x] Reviewer: rubric scores + reasons + pass rule in code + per-hook accuracy check
   - [ ] Quality gate: pass rule, max 2 rewrites with critic notes, else `below_quality`
-  - [~] Fact-check: all sentences in ONE thinking call (Qwen3.5 9B q4_K_M): 9/9 on test set, ~4–5 min. Not yet connected to the chain.
+  - [x] Fact-check: all sentences in ONE thinking call (Qwen3.5 9B q4_K_M): 9/9 on test set, ~4–5 min, connected to the chain
+  - [x] Length gate: ±15% of brand target; Writer uses sentence count (13 words/sentence); repeated hook removed in code
+  - [x] Switched default LLM to Qwen3.5 9B q4_K_M (old Qwen3 8B removed)
 - [ ] **Pipeline flexibility** (see ARCHITECTURE §3 "Pipeline flexibility"):
   - [ ] `pipeline:` block in brand YAML (type, research, fact_check, sensitivity, review)
   - [ ] Adaptive research: extra rounds if facts < `min_facts`; skip topic if still not enough
   - [ ] Steps on/off per brand (e.g. no research/fact-check for fiction)
   - [ ] Sensitivity `high`: 2 sources per claim, Reviewer min 8, no jokes on sensitive part, disclaimer
   - [ ] Ranker flags sensitive topics → strict rules for that video only
-- [ ] Storyboard: scenes with narration, image_prompt, camera move, transition, SFX cue
+- [x] Storyboard: code splits scenes + picks motion/transition; LLM writes doodle image prompts; quoted text removed
+- [x] `pipeline/produce.py`: storyboard → images + per-scene voice + captions → MP4 (reuses finished files)
+- [x] First full Mind Facts video rendered (`storage/tests/first_video/final.mp4`, 66s, ~20 min)
+- [ ] Image accuracy: faces mostly neutral, "spotlight" drawn as yellow head, story details missing
+- [ ] Captions: pass script text to Whisper (it wrote "Bari Manilow"); move captions lower
+- [ ] SFX cues in storyboard
 - [x] `services/comfy.py` + base SDXL workflow JSON → one image per scene
 - [x] `services/tts.py`: Kokoro + Chatterbox narration
 - [x] `services/render.py`: FFmpeg stills + pan/zoom + crossfade + audio + captions → MP4

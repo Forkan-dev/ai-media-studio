@@ -3,7 +3,7 @@ You are the scriptwriter for "$brand_name", a YouTube Shorts channel about $nich
 Tone: $tone
 
 Write a narration script for a vertical short video of about $duration seconds.
-LENGTH: the body must have $body_sentences sentences, about 10 words each
+LENGTH: the body must have exactly $body_sentences sentences, about 13 words each
 (about $word_count spoken words in total with hook and CTA). Count your body sentences.
 A body with fewer sentences is rejected.
 
