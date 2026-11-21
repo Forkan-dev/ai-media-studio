@@ -4,7 +4,7 @@ An AI content studio that runs **multiple faceless video brands from one dashboa
 
 You create a brand once — its niche, language, voice, visual style, recurring characters and posting schedule — and the system handles the rest, from topic research to publishing and performance tracking.
 
-> Docs: [ARCHITECTURE.md](ARCHITECTURE.md) · [TASKS.md](TASKS.md) (progress tracker)
+> Docs: [ARCHITECTURE.md](ARCHITECTURE.md) · [TASKS.md](TASKS.md) (progress tracker) · [SCRIPT_FLOW.md](SCRIPT_FLOW.md) (how a script is made)
 
 ---
 
@@ -66,7 +66,7 @@ Niche, format, duration, language, voice, art style, characters, music, prompts 
 
 | Concern | Tool |
 |---|---|
-| Writing / reasoning | **Qwen3** via Ollama |
+| Writing / reasoning | **Qwen3.5 9B** via Ollama |
 | Images | **SDXL** via **ComfyUI** (+ per-brand LoRA) |
 | Voice | **Kokoro** TTS |
 | Captions | **Whisper** (word-level timestamps) |
@@ -92,7 +92,7 @@ It runs on **local hardware (16GB target) or cloud GPUs with no code changes**.
 | uv | Python env + packages | small | brew |
 | FFmpeg **full** (with libass) | Render, captions | ~60 MB | brew (`ffmpeg-full`, not `ffmpeg`) |
 | espeak-ng | Kokoro phonemes fallback | small | brew |
-| Ollama + **Qwen3 8B** | Writing / scoring | ~5 GB | brew + `ollama pull` |
+| Ollama + **Qwen3.5 9B (q4_K_M)** | Writing / scoring / fact-check | ~6.6 GB | brew + `ollama pull` |
 | Docker (Colima or Docker Desktop) + **SearXNG** | Web search | ~200 MB | docker |
 | **ComfyUI** | Image generation server | ~3 GB (PyTorch) | git clone |
 | **Animagine XL 4.0 (opt)** | Anime images | 6.9 GB | download |
@@ -108,7 +108,7 @@ It runs on **local hardware (16GB target) or cloud GPUs with no code changes**.
 # 1. System tools
 brew install uv ffmpeg-full ollama espeak-ng   # if plain ffmpeg is installed: brew uninstall ffmpeg first
 brew services start ollama
-ollama pull qwen3:8b
+ollama pull qwen3.5:9b-q4_K_M   # use this tag: the default qwen3.5:9b (NVFP4) has no JSON output in Ollama
 
 # 2. Backend Python packages
 cd backend && uv sync && cd ..

@@ -111,6 +111,48 @@ The goal is not "perfect". The goal is that **no video below a minimum bar is ev
 - **Bias control:** the Reviewer never sees which draft is newest, compares several candidates, and can run on a larger model (`reviewer_model` in Settings, e.g. Qwen3 14B).
 - **Human review stays the final gate** before publishing.
 
+### Pipeline flexibility (business requirement)
+
+The flow is **not** identical for every brand or topic. It has one shared skeleton with three levels of flexibility:
+
+1. **Per brand (YAML `pipeline:` block):** steps can be turned on or off and tuned.
+   - Fiction or storytelling brand: `research: off`, `fact_check: off`.
+   - A truly different flow (e.g. Video → Shorts clipper) is a separate `pipeline.type`.
+   ```yaml
+   pipeline:
+     type: script_video          # script_video | clipper
+     research: { min_facts: 6, max_rounds: 2 }
+     fact_check: { required: true, min_sources_per_claim: 1 }
+     sensitivity: normal         # normal | high
+     review: { min_score: 7, max_rewrites: 2 }
+   ```
+2. **Per topic (automatic):**
+   - **Little information online:** if research finds fewer than `min_facts`, it runs another round with more queries and pages, up to `max_rounds`.
+   - **Still not enough:** the topic is skipped and the Ranker picks the next one. No script is written without enough facts.
+3. **Sensitivity (per brand or per topic):**
+   - `sensitivity: high` (e.g. health, finance) means:
+     - every claim needs 2 sources
+     - Reviewer minimum 8
+     - no jokes about the sensitive part
+     - a disclaimer line if needed
+   - The Ranker can flag a single topic as sensitive (e.g. mental illness in Mind Facts), and the strict rules apply to that video only.
+
+### Walkthrough: one Mind Facts video
+
+1. **Topic discovery** searches psychology topics and finds ~30 candidates. Already-used topics are removed.
+2. **Ranker** scores them and picks **"the spotlight effect"**.
+3. **Research** reads 8 sources and extracts:
+   - 8 facts, e.g. the T-shirt study: ~50% guessed vs. ~25% noticed
+   - surprising details, e.g. the Barry Manilow T-shirt
+   - 3 myth/truth pairs
+4. **Writer** writes 3 hooks and 2 drafts from that research, using one topic for one video.
+5. **Editor** polishes them. **Reviewer** scores them, and the best passing draft wins. Otherwise the Writer rewrites (max 2), or the job ends as `below_quality`.
+6. **Fact-check** checks each claim against the research.
+7. **Storyboard** produces scenes with narration, a doodle image prompt, motion, transition and SFX.
+8. **Visuals** (doodle LoRA), **voice**, **captions** and **render** produce the 9:16 video. Then the thumbnail and title.
+9. **Human review**, then publish. Stats feed back into the Ranker.
+10. The next video uses the next best topic.
+
 ### Continuous production
 
 - A **scheduler** adds jobs for each brand from its schedule (e.g. 3 per day).
@@ -255,7 +297,7 @@ storage/{job_id}/
 
 | Step | Model | Limit / note |
 |---|---|---|
-| Text | Qwen3 8B (Ollama) | Can confirm false facts. Fact-check only against search results. |
+| Text | Qwen3.5 9B `q4_K_M` (Ollama) | Misses reversed claims ("more" vs "less") without thinking. Fact-check uses ONE thinking call per script (~4–5 min, 9/9 on test set). NVFP4 tag has no JSON output in Ollama. |
 | Search | SearXNG (self-hosted) or Brave Search API | Needed for topic research + fact-check. |
 | Images | SDXL + anime/realistic fine-tune + brand LoRA | Slowest step (~20–60s/image). No text in images: all text through FFmpeg. |
 | Voice | Kokoro (54 voices) | Fast. No emotion control. Languages: EN, JA, ZH, ES, FR, HI, IT, PT only. |

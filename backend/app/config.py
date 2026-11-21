@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     workflows_dir: Path = ROOT / "backend" / "workflows"
 
     ollama_url: str = "http://localhost:11434"
-    llm_model: str = "qwen3:8b"
+    llm_model: str = "qwen3.5:9b-q4_K_M"  # q4_K_M build: supports JSON schema output in Ollama
+    llm_context: int = 16384  # tokens; research prompts include page text
     comfy_url: str = "http://localhost:8188"
     search_url: str = "http://localhost:8080"  # SearXNG
     ffmpeg_bin: str = "ffmpeg"

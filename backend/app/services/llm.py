@@ -10,7 +10,8 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def chat_json(
-    system: str, user: str, schema: type[T], temperature: float = 0.7, model: str | None = None
+    system: str, user: str, schema: type[T], temperature: float = 0.7, model: str | None = None,
+    think: bool = False,
 ) -> T:
     """Ask the model for JSON that matches `schema` and return it parsed."""
     resp = httpx.post(
@@ -19,9 +20,9 @@ def chat_json(
             "model": model or settings.llm_model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "format": schema.model_json_schema(),  # Ollama constrains output to this schema
-            "think": False,  # Qwen3: skip the hidden reasoning pass, faster
+            "think": think,  # Qwen3 reasoning pass: slower, but much better at logic
             "stream": False,
-            "options": {"temperature": temperature},
+            "options": {"temperature": temperature, "num_ctx": settings.llm_context},
         },
         timeout=600,
     )

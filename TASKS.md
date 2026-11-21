@@ -45,16 +45,24 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Own Mind Facts doodle LoRA before monetized publishing (license-safe)
 - [x] `services/llm.py`: Ollama client with JSON output (schema-constrained, Pydantic-validated)
 - [x] Prompt templates as files (`prompts/<brand>/<role>.md`, `app/prompts.py`)
-- [ ] `services/search.py`: SearXNG search + page text fetch
+- [x] `services/search.py`: SearXNG search + page text fetch (trafilatura)
 - [ ] **Script brain** (prompt template per role in `prompts/<brand>/`):
   - [ ] Topic discovery: ~30 candidates from search, dupes removed
   - [ ] Ranker: score topics (curiosity, relatable, humor, evidence, novelty) → best
-  - [ ] Research: 3–5 sources → key facts + URLs
-  - [~] Writer: 3 hooks + draft (done); 2–3 drafts with rotating structures (todo)
+  - [x] Research: 4 queries, 8 sources → facts, surprising details, myth/truth + source URLs (~1 min)
+  - [x] Writer: 3 hooks + draft, uses research facts + reviewer feedback
+  - [x] Script chain (`pipeline/script.py`): 2 drafts → review → max 2 rewrites → passed / below_quality
+  - [x] Reviewer calibration: logic criterion, tagged weaknesses, weakness cap enforced in code, temperature 0
   - [ ] Editor: polish wording, flow, pacing, humor
-  - [~] Reviewer: rubric scores + reasons + pass rule in code (done); per-hook accuracy check (todo)
+  - [x] Reviewer: rubric scores + reasons + pass rule in code + per-hook accuracy check
   - [ ] Quality gate: pass rule, max 2 rewrites with critic notes, else `below_quality`
-  - [ ] Fact-check: claims vs. research notes
+  - [~] Fact-check: all sentences in ONE thinking call (Qwen3.5 9B q4_K_M): 9/9 on test set, ~4–5 min. Not yet connected to the chain.
+- [ ] **Pipeline flexibility** (see ARCHITECTURE §3 "Pipeline flexibility"):
+  - [ ] `pipeline:` block in brand YAML (type, research, fact_check, sensitivity, review)
+  - [ ] Adaptive research: extra rounds if facts < `min_facts`; skip topic if still not enough
+  - [ ] Steps on/off per brand (e.g. no research/fact-check for fiction)
+  - [ ] Sensitivity `high`: 2 sources per claim, Reviewer min 8, no jokes on sensitive part, disclaimer
+  - [ ] Ranker flags sensitive topics → strict rules for that video only
 - [ ] Storyboard: scenes with narration, image_prompt, camera move, transition, SFX cue
 - [x] `services/comfy.py` + base SDXL workflow JSON → one image per scene
 - [x] `services/tts.py`: Kokoro + Chatterbox narration
@@ -80,6 +88,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Music rotation (no repeat within 10 videos)
 - [ ] 9:16 and 16:9 output (layout/crop per ratio)
 - [ ] Long-form script template (separate from Shorts)
+- [ ] **One brand makes both Shorts and long-form** (required): `formats: [short, long]` + duration per format in brand config (now: one format + one duration per brand)
 - [ ] Thumbnail generation (SDXL + text overlay)
 - [ ] Metadata: title, description, tags, hashtags
 - [ ] ✅ Milestone: publish-ready Short and long-form video
