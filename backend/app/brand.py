@@ -5,7 +5,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import settings
-from app.services.render import MOTIONS
+from app.clients.render import MOTIONS
 
 
 class Voice(BaseModel):

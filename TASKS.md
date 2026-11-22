@@ -39,7 +39,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 
 ## Phase 1 (Week 1–2): One video end to end
 **Goal:** run a CLI command and get one finished MP4.
-- [~] DB models: Topic done; Brand, Job, Scene, Asset (SQLAlchemy, SQLite)
+- [~] DB models: Topic + Job done; Brand, Scene, Asset (SQLAlchemy, SQLite)
 - [x] Brand YAML schema (Pydantic) + loader + first brand config (**Mind Facts**)
 - [x] Doodle LoRA for SDXL + Mind Facts image style test (Doodle Redmond, testing only)
 - [ ] Own Mind Facts doodle LoRA before monetized publishing (license-safe)
@@ -47,7 +47,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [x] Prompt templates as files (`prompts/<brand>/<role>.md`, `app/prompts.py`)
 - [x] `services/search.py`: SearXNG search + page text fetch (trafilatura)
 - [ ] **Script brain** (prompt template per role in `prompts/<brand>/`):
-  - [x] Topic discovery (`pipeline/topics.py`): 6 niche searches → LLM ideas → saved in DB `topics`; made videos + known topics skipped (~3 min)
+  - [x] Topic discovery (`pipeline/topics.py` + `services/topic_service.py`): 6 niche searches → LLM ideas → saved in DB `topics`; made videos + known topics skipped (~3 min)
   - [x] Ranker: curiosity, relatable, evidence, visual (1–10, average); `make` without `--topic` uses the best; topic marked `used` after the video
   - [x] Research: 4 queries, 8 sources → facts, surprising details, myth/truth + source URLs (~1 min)
   - [x] Writer: 3 hooks + draft, uses research facts + reviewer feedback
@@ -115,16 +115,22 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Hook memory (past hooks passed as "do not reuse")
 - [ ] Embeddings in sqlite-vec + script similarity check
 - [ ] 5–10 rotating script structures per format
+- [x] Backend layers: models, Alembic migrations, schemas, repositories, services (TopicService, JobService, one Stage class per step), API routers; `services/` tools moved to `clients/`
+- [x] Jobs (`services/job_service.py`, DB `jobs`): stages research → script → storyboard → images → render → thumbnail; pause at gates (research, script, images, thumbnail); approve / redo; failures saved on the job; CLI `make --gates`, `approve`, `redo`, `jobs`
 - [ ] Job queue: SQLite `jobs` table + single worker process
 - [ ] `model_manager`: load/unload so only one heavy model is in memory
 - [ ] Checkpointing + resume from last finished step after a crash
-- [ ] Retry from any step
-- [ ] Human approval via LangGraph `interrupt`
-- [ ] FastAPI routes: brands, jobs, batch, retry, approve/reject
+- [x] Retry the current step (`redo`); stages read inputs from folder files, so edits are used
+- [~] Human approval: done with job gates (no LangGraph needed so far)
+- [~] FastAPI routes: topics (list, discover), jobs (list, get, create, approve, redo) done; brands, batch, edit files, single image redo to do
 - [ ] WebSocket for live step progress + logs
 - [ ] ✅ Milestone: queue 3 jobs, kill worker mid-run, it resumes correctly
 
 ## Phase 4 (Week 5): Vue dashboard
+- [ ] **Approval gate after every step** (topics, research, script + rating, images, thumbnail): approve, edit, or keep as is and continue, even with a bad rating
+- [ ] Images gate: regenerate single images, approve all, or reject the batch and regenerate all
+- [ ] Thumbnail gate: config (auto text position, top / bottom, more) + LLM text options or own text
+- [ ] Design: clean, minimal, professional (big-tech look); few buttons, little text
 - [ ] Vue 3 + Vite + router + API client setup
 - [ ] **Review screen** (first priority)
   - [ ] Video player

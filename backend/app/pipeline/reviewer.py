@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 from app.brand import Brand
 from app.pipeline.writer import Draft
 from app.prompts import render
-from app.services.llm import chat_json
+from app.clients.llm import chat_json
 
 MIN_ANY = 5  # no criterion may score below this
 MIN_ACCURACY = 7

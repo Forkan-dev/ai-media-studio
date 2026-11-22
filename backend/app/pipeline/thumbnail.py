@@ -16,8 +16,8 @@ from app.pipeline.image_check import check_image
 from app.pipeline.produce import MAX_IMAGE_RETRIES, generate_scene_image
 from app.pipeline.storyboard import insert_character, no_text
 from app.prompts import render
-from app.services.comfy import free_memory
-from app.services.llm import chat_json, unload
+from app.clients.comfy import free_memory
+from app.clients.llm import chat_json, unload
 
 FINAL_SIZE = {"short": (1080, 1920), "long": (1280, 720)}
 

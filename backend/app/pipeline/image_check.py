@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.brand import Brand
 from app.prompts import render
-from app.services.llm import chat_json
+from app.clients.llm import chat_json
 
 
 class ImageCheck(BaseModel):

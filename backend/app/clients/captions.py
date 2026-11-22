@@ -1,7 +1,7 @@
 """Word-by-word animated captions as an ASS subtitle file (burned in by FFmpeg)."""
 from pathlib import Path
 
-from app.services.whisper import Word
+from app.clients.whisper import Word
 
 HIGHLIGHT = r"{\c&H00E5FF&}"  # ASS colours are BGR: this is yellow
 RESET = r"{\c&HFFFFFF&}"  # back to white only; a full style reset shifted the line

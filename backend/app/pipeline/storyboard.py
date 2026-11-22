@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ValidationError, create_model
 from app.brand import Brand
 from app.pipeline.fact_check import sentences
 from app.prompts import render
-from app.services.llm import chat_json
+from app.clients.llm import chat_json
 
 MIN_SCENE_WORDS = 6  # shorter sentences are joined with the next one
 

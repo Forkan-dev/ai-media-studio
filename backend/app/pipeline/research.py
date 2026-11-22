@@ -3,8 +3,8 @@ from pydantic import BaseModel
 
 from app.brand import Brand
 from app.prompts import render
-from app.services.llm import chat_json
-from app.services.search import Result, page_text, search
+from app.clients.llm import chat_json
+from app.clients.search import Result, page_text, search
 
 QUERY_SUFFIXES = ["psychology study", "scientific evidence replication", "examples everyday life",
                   "what research really shows"]

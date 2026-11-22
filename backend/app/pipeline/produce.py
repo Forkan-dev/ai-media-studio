@@ -1,5 +1,5 @@
-"""Produce: storyboard -> images + voice + captions -> final MP4.
-Finished temp files are reused on rerun; they are deleted after a successful render."""
+"""Produce: storyboard -> images, then voice + captions -> final MP4.
+Finished temp files are reused on rerun; they are deleted when the job is done."""
 import re
 from datetime import date
 from pathlib import Path
@@ -11,12 +11,12 @@ from app.brand import Brand
 from app.config import settings
 from app.pipeline.image_check import check_image
 from app.pipeline.storyboard import Storyboard
-from app.services import render
-from app.services.captions import write_ass
-from app.services.comfy import ImageSpec, free_memory, generate_image
-from app.services.llm import unload
-from app.services.tts import synthesize
-from app.services.whisper import transcribe_words
+from app.clients import render
+from app.clients.captions import write_ass
+from app.clients.comfy import ImageSpec, free_memory, generate_image
+from app.clients.llm import unload
+from app.clients.tts import synthesize
+from app.clients.whisper import transcribe_words
 
 SCENE_GAP = 0.15  # seconds of silence after each scene's narration
 TEMP_PATTERNS = ("scene_*.png", "scene_*.wav", "narration.wav", "captions.ass")  # thumbnail files are kept
@@ -83,12 +83,14 @@ def _voice(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[float]]:
     return narration, durations
 
 
-def produce_video(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[int]]:
-    """Returns the final video and the scene numbers whose images failed the check."""
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "storyboard.json").write_text(sb.model_dump_json(indent=1))
-    (out / "script.txt").write_text(" ".join(s.narration for s in sb.scenes))
-    images, failed_images = _images(brand, sb, out)
+def make_images(brand: Brand, sb: Storyboard, out: Path) -> list[int]:
+    """Missing scene images are made and checked. Returns the scene numbers that still fail the check."""
+    return _images(brand, sb, out)[1]
+
+
+def render_final(brand: Brand, sb: Storyboard, out: Path) -> Path:
+    """Scene images (already made) + voice + captions -> final.mp4."""
+    images = [out / f"scene_{i:02d}.png" for i in range(1, len(sb.scenes) + 1)]
     audio, durations = _voice(brand, sb, out)
     captions = write_ass(
         transcribe_words(audio, language=brand.language, script=" ".join(s.narration for s in sb.scenes)),
@@ -97,7 +99,5 @@ def produce_video(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[i
     )
     scenes = [render.Scene(img, dur, s.motion, s.transition)
               for img, dur, s in zip(images, durations, sb.scenes)]
-    final = render.render_video(scenes, audio, out / "final.mp4", captions=captions,
-                                size=brand.size, transition=brand.look.transition_seconds)
-    cleanup(out)  # only reached when the render succeeded
-    return final, failed_images
+    return render.render_video(scenes, audio, out / "final.mp4", captions=captions,
+                               size=brand.size, transition=brand.look.transition_seconds)
