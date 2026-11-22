@@ -2,7 +2,7 @@ slug: mind_facts
 name: Mind Facts
 niche: psychology facts
 language: en
-tone: funny, smart and simple; explain one surprising psychology fact like a friend would
+tone: smart, simple and relatable; explain one surprising psychology fact like a friend would, with light humor only when it fits naturally
 format: short            # short = 9:16, long = 16:9
 duration: 60             # target length in seconds
 
@@ -16,12 +16,18 @@ images:
   lora: DoodleRedmond-Doodle-DoodleRedm.safetensors   # testing only: license unclear for monetized use
   default_style: stick_doodle
   styles:                # selectable per video
-    stick_doodle:        # round soft doodle character, not human-like; dramatic light and mood
+    stick_doodle:        # same proven recipe as human_doodle, only the character is a round doodle
       lora_weight: 0.75
-      character: a round cartoon doodle character with a big round head, a small soft body, two dot eyes, no hair, no clothes
+      character: a round cartoon doodle character with a big round head, a small soft body, two arms, two legs, two dot eyes, no hair, no clothes
       others: small round doodle characters with no hair and no clothes
-      style: (hand-drawn doodle drawing:1.3), DoodleRedm, expressive cartoon doodle, black marker lines, dynamic pose, scene with background, depth and perspective, dramatic light, glow, dark background, soft shadows, playful, one color accent
-      negative: photo, photograph, photo background, realistic, 3d render, real person, celebrity, photo of a person, human proportions, hair, clothes, text, letters, watermark, signature, blurry, stiff pose, standing straight, front view, symmetrical, extra limbs, mustache, objects with legs, objects with faces
+      style: (hand-drawn cartoon doodle:1.2), DoodleRedm, expressive cartoon doodle, clean continuous black marker lines, dynamic pose, scene with background, depth and perspective, light shading, black and white with one color accent, playful
+      negative: photo, photograph, photo background, realistic, 3d render, real person, celebrity, photo of a person, human proportions, hair, clothes, text, letters, watermark, signature, blurry, extra arms, extra hands, extra limbs, multiple limbs, broken lines, messy sketch, colorful, stiff pose, standing straight, front view, symmetrical, mustache, objects with legs, objects with faces
+    round_cartoon:       # round bald character, full-frame colored cartoon with light and depth
+      lora_weight: 0.55
+      character: an adult cartoon man with a round bald head, an adult face, a slim adult body, thin arms and legs, expressive eyes
+      others: simple cartoon people in the same style
+      style: DoodleRedm, full-frame digital cartoon illustration, clean bold outlines, cel shaded, vibrant colors, warm cinematic lighting, rim light, soft shadows, depth and perspective, detailed background, dimensional
+      negative: blurry, low quality, extra arms, extra legs, extra hands, extra limbs, deformed, broken lines, text, letters, watermark, signature, photo, photograph, realistic, 3d render, real person, celebrity
     human_doodle:        # cartoon people with hair and clothes, scenes with depth and shading
       lora_weight: 0.75
       character: a young cartoon man with short messy black hair, a plain white t-shirt, dark jeans and white sneakers
@@ -42,3 +48,4 @@ look:
 
 prompts: mind_facts      # folder in backend/prompts/
 min_quality_score: 7     # Reviewer pass mark (1-10)
+review_criteria: [hook, accuracy, clarity, logic, relatability, pacing, originality]   # a comedy brand adds humor

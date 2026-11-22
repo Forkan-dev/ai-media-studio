@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     comfy_url: str = "http://localhost:8188"
     search_url: str = "http://localhost:8080"  # SearXNG
     ffmpeg_bin: str = "ffmpeg"
+    thumbnail_font: Path = Path("/System/Library/Fonts/Supplemental/Impact.ttf")  # macOS; set in .env on Linux
 
 
 settings = Settings()

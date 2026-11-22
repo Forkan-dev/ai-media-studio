@@ -39,7 +39,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 
 ## Phase 1 (Week 1–2): One video end to end
 **Goal:** run a CLI command and get one finished MP4.
-- [ ] DB models: Brand, Job, Scene, Asset (SQLAlchemy, SQLite)
+- [~] DB models: Topic done; Brand, Job, Scene, Asset (SQLAlchemy, SQLite)
 - [x] Brand YAML schema (Pydantic) + loader + first brand config (**Mind Facts**)
 - [x] Doodle LoRA for SDXL + Mind Facts image style test (Doodle Redmond, testing only)
 - [ ] Own Mind Facts doodle LoRA before monetized publishing (license-safe)
@@ -47,8 +47,8 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [x] Prompt templates as files (`prompts/<brand>/<role>.md`, `app/prompts.py`)
 - [x] `services/search.py`: SearXNG search + page text fetch (trafilatura)
 - [ ] **Script brain** (prompt template per role in `prompts/<brand>/`):
-  - [ ] Topic discovery: ~30 candidates from search, dupes removed
-  - [ ] Ranker: score topics (curiosity, relatable, humor, evidence, novelty) → best
+  - [x] Topic discovery (`pipeline/topics.py`): 6 niche searches → LLM ideas → saved in DB `topics`; made videos + known topics skipped (~3 min)
+  - [x] Ranker: curiosity, relatable, evidence, visual (1–10, average); `make` without `--topic` uses the best; topic marked `used` after the video
   - [x] Research: 4 queries, 8 sources → facts, surprising details, myth/truth + source URLs (~1 min)
   - [x] Writer: 3 hooks + draft, uses research facts + reviewer feedback
   - [x] Script chain (`pipeline/script.py`): 2 drafts → review → max 2 rewrites → passed / below_quality
@@ -58,6 +58,11 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
   - [ ] Quality gate: pass rule, max 2 rewrites with critic notes, else `below_quality`
   - [x] Fact-check: all sentences in ONE thinking call (Qwen3.5 9B q4_K_M): 9/9 on test set, ~4–5 min, connected to the chain
   - [x] Length gate: ±15% of brand target; Writer uses sentence count (13 words/sentence); repeated hook removed in code
+  - [x] **Always produce, flag problems**: max 1 repair round, wrong sentences removed by code, status passed / needs_attention, `review.json` per video
+  - [x] Research sorted into core fact / established / debated; reliable sources first
+  - [x] Review criteria per brand (Mind Facts: relatability instead of humor)
+  - [x] Image vision check (Qwen3.5) + `MAIN_CHARACTER` token; thumbnail (plan + SDXL + Impact text); metadata step
+  - [x] CLI: `uv run python -m app.cli make --brand <slug> --topic "<topic>" --style <style>`
   - [x] Switched default LLM to Qwen3.5 9B q4_K_M (old Qwen3 8B removed)
 - [ ] **Pipeline flexibility** (see ARCHITECTURE §3 "Pipeline flexibility"):
   - [ ] `pipeline:` block in brand YAML (type, research, fact_check, sensitivity, review)
@@ -69,14 +74,14 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [x] `pipeline/produce.py`: storyboard → images + per-scene voice + captions → MP4 (reuses finished files)
 - [x] First full Mind Facts video rendered (`storage/tests/first_video/final.mp4`, 66s, ~20 min)
 - [ ] Image accuracy: faces mostly neutral, "spotlight" drawn as yellow head, story details missing
-- [ ] Captions: pass script text to Whisper (it wrote "Bari Manilow"); move captions lower
+- [x] Captions: pass script text to Whisper; captions bottom-middle
 - [ ] SFX cues in storyboard
 - [x] `services/comfy.py` + base SDXL workflow JSON → one image per scene
 - [x] `services/tts.py`: Kokoro + Chatterbox narration
 - [x] `services/render.py`: FFmpeg stills + pan/zoom + crossfade + audio + captions → MP4
 - [ ] Save every step's output to `storage/{job_id}/` + DB
-- [ ] CLI: `python -m app.cli make --brand <slug>`
-- [ ] ✅ Milestone: first full video rendered
+- [x] CLI: `make --brand <slug>` (topic optional) + `topics --brand <slug> [--find]`
+- [x] ✅ Milestone: first full video rendered
 
 ## Phase 2 (Week 3): Polish the output
 - [x] `services/whisper.py`: word-level timestamps
@@ -88,7 +93,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Varied shot types (wide/medium/close-up) in storyboard
 - [ ] Music library (royalty-free) + selection by brand music style
 - [ ] Audio ducking (sidechain) under narration
-- [ ] Scene transitions: random from brand's allowed `xfade` types
+- [x] Scene transitions: random from brand's allowed `xfade` types
 - [ ] 2.5D parallax from depth map
 - [ ] Overlays: rain, sakura, light, particles
 - [ ] Anime SDXL fine-tune (Animagine/Illustrious) workflow
@@ -96,8 +101,8 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] 9:16 and 16:9 output (layout/crop per ratio)
 - [ ] Long-form script template (separate from Shorts)
 - [ ] **One brand makes both Shorts and long-form** (required): `formats: [short, long]` + duration per format in brand config (now: one format + one duration per brand)
-- [ ] Thumbnail generation (SDXL + text overlay)
-- [ ] Metadata: title, description, tags, hashtags
+- [x] Thumbnail generation (SDXL + text overlay, text in calmest band)
+- [x] Metadata: title, description, tags, hashtags
 - [ ] ✅ Milestone: publish-ready Short and long-form video
 
 ## Phase 3 (Week 4): Orchestration and reliability
@@ -133,6 +138,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Create screen: brand + format + duration, "Batch: make 10"
 - [ ] Dashboard: running, awaiting approval, published today, views per brand
 - [ ] Brands screen: edit config, LoRA, voice, music, schedule
+- [ ] Brand studio: "Get topics" button (runs discovery) + saved topics list (best first, used topics hidden) → pick one → make video
 - [ ] Settings: models, API keys
 - [ ] ✅ Milestone: full review and approve flow from the browser
 

@@ -50,13 +50,13 @@ CHARACTER_TOKEN = "MAIN_CHARACTER"
 CHARACTER_PHRASES = r"\bthe (?:main character|protagonist)\b"
 
 
-def _insert_character(prompt: str, character: str) -> str:
+def insert_character(prompt: str, character: str) -> str:
     """The code, not the LLM, writes the full character description into every prompt."""
     prompt = re.sub(CHARACTER_PHRASES, CHARACTER_TOKEN, prompt, flags=re.IGNORECASE)
     return prompt.replace(CHARACTER_TOKEN, character)
 
 
-def _no_text(prompt: str) -> str:
+def no_text(prompt: str) -> str:
     """Remove quoted text ('Subscribe', labeled "X"): SDXL cannot draw text."""
     cleaned = re.sub(r"\s*(?:labeled|labelled|reading|that says|saying|with the words?)?\s*['\"][^'\"]+['\"]",
                      "", prompt)
@@ -91,6 +91,6 @@ def make_storyboard(brand: Brand, topic: str, narration: str, style: str | None 
     motions = _pick_no_repeat(brand.look.motions, len(lines))
     transitions = _pick_no_repeat(brand.look.transitions, len(lines))
     return Storyboard(style=style, scenes=[
-        Scene(narration=n, image_prompt=_insert_character(_no_text(p), st.character), motion=m, transition=t)
+        Scene(narration=n, image_prompt=insert_character(no_text(p), st.character), motion=m, transition=t)
         for n, p, m, t in zip(lines, prompts, motions, transitions)
     ])

@@ -19,7 +19,7 @@ from app.services.tts import synthesize
 from app.services.whisper import transcribe_words
 
 SCENE_GAP = 0.15  # seconds of silence after each scene's narration
-TEMP_PATTERNS = ("scene_*.png", "scene_*.wav", "narration.wav", "captions.ass")
+TEMP_PATTERNS = ("scene_*.png", "scene_*.wav", "narration.wav", "captions.ass")  # thumbnail files are kept
 MAX_IMAGE_RETRIES = 2  # rounds of regenerating images that fail the vision check
 
 
@@ -36,8 +36,8 @@ def cleanup(folder: Path) -> None:
             f.unlink()
 
 
-def _generate(brand: Brand, sb: Storyboard, prompt: str, path: Path) -> None:
-    im, st = brand.images, brand.images.style(sb.style)
+def generate_scene_image(brand: Brand, style: str, prompt: str, path: Path) -> None:
+    im, st = brand.images, brand.images.style(style)
     w, h = (832, 1216) if brand.format == "short" else (1216, 832)
     generate_image(ImageSpec(
         f"{st.style}, {prompt}",  # style first: SDXL weights early words more
@@ -46,13 +46,14 @@ def _generate(brand: Brand, sb: Storyboard, prompt: str, path: Path) -> None:
     ), path)
 
 
-def _images(brand: Brand, sb: Storyboard, out: Path) -> list[Path]:
-    """Generate missing images, then let the vision model check them; redo failed ones."""
+def _images(brand: Brand, sb: Storyboard, out: Path) -> tuple[list[Path], list[int]]:
+    """Generate missing images, then let the vision model check them; redo failed ones.
+    Returns the image paths and the 1-based scene numbers that still fail (flags for review)."""
     paths = [out / f"scene_{i:02d}.png" for i in range(1, len(sb.scenes) + 1)]
     todo = [i for i, p in enumerate(paths) if not p.exists()]
     for round_no in range(MAX_IMAGE_RETRIES + 1):
         for i in todo:
-            _generate(brand, sb, sb.scenes[i].image_prompt, paths[i])
+            generate_scene_image(brand, sb.style, sb.scenes[i].image_prompt, paths[i])
         free_memory()  # SDXL out, vision model in
         checks = {i: check_image(brand, sb.style, sb.scenes[i].image_prompt, paths[i])
                   for i in (range(len(paths)) if round_no == 0 else todo)}
@@ -62,7 +63,7 @@ def _images(brand: Brand, sb: Storyboard, out: Path) -> list[Path]:
             print(f"image check failed, scene {i + 1}: {checks[i].reason}", flush=True)
         if not todo:
             break
-    return paths  # images still failing after the retries stay; the human review screen catches them
+    return paths, [i + 1 for i in todo]  # still-failing images stay; they are flagged for review
 
 
 def _voice(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[float]]:
@@ -82,11 +83,12 @@ def _voice(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[float]]:
     return narration, durations
 
 
-def produce_video(brand: Brand, sb: Storyboard, out: Path) -> Path:
+def produce_video(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[int]]:
+    """Returns the final video and the scene numbers whose images failed the check."""
     out.mkdir(parents=True, exist_ok=True)
     (out / "storyboard.json").write_text(sb.model_dump_json(indent=1))
     (out / "script.txt").write_text(" ".join(s.narration for s in sb.scenes))
-    images = _images(brand, sb, out)
+    images, failed_images = _images(brand, sb, out)
     audio, durations = _voice(brand, sb, out)
     captions = write_ass(
         transcribe_words(audio, language=brand.language, script=" ".join(s.narration for s in sb.scenes)),
@@ -98,4 +100,4 @@ def produce_video(brand: Brand, sb: Storyboard, out: Path) -> Path:
     final = render.render_video(scenes, audio, out / "final.mp4", captions=captions,
                                 size=brand.size, transition=brand.look.transition_seconds)
     cleanup(out)  # only reached when the render succeeded
-    return final
+    return final, failed_images

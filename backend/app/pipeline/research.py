@@ -1,13 +1,18 @@
-"""Research role: topic -> verified facts with source links."""
+"""Research role: topic -> sorted findings (core fact, established, debated) with source links."""
 from pydantic import BaseModel
 
 from app.brand import Brand
 from app.prompts import render
 from app.services.llm import chat_json
-from app.services.search import page_text, search
+from app.services.search import Result, page_text, search
 
-QUERY_SUFFIXES = ["psychology study", "experiment results", "examples everyday life", "surprising facts"]
+QUERY_SUFFIXES = ["psychology study", "scientific evidence replication", "examples everyday life",
+                  "what research really shows"]
 MAX_PAGES = 8
+MIN_ESTABLISHED = 3  # fewer established facts = topic is not solid enough for a video
+# reliable sources are read first
+PREFERRED = ("wikipedia.org", ".edu", "apa.org", "ncbi.nlm.nih.gov", "nature.com", "sciencedirect.com",
+             "simplypsychology.org", "britannica.com", "thedecisionlab.com", "verywellmind.com")
 
 
 class Finding(BaseModel):
@@ -22,7 +27,9 @@ class Misconception(BaseModel):
 
 
 class Research(BaseModel):
-    facts: list[Finding]
+    core_fact: Finding
+    established: list[Finding]
+    debated: list[Finding]
     surprising_details: list[Finding]
     misconceptions: list[Misconception]
 
@@ -31,19 +38,30 @@ class ResearchResult(BaseModel):
     research: Research
     urls: list[str]  # index i = source number i+1
 
+    def is_solid(self) -> bool:
+        return len(self.research.established) >= MIN_ESTABLISHED
+
     def facts_text(self) -> str:
-        """Facts formatted for the Writer and Reviewer prompts."""
-        lines = [f"- {f.text}" for f in self.research.facts]
-        lines += [f"- (detail) {d.text}" for d in self.research.surprising_details]
-        lines += [f"- {m.truth} (This corrects the wrong belief: {m.myth})"
-                  for m in self.research.misconceptions]
+        """Facts for the Writer, Reviewer and fact-check, sorted by how safe they are."""
+        r = self.research
+        lines = ["CORE FACT (build the video on this):", f"- {r.core_fact.text}", "",
+                 "ESTABLISHED FACTS:", *[f"- {f.text}" for f in r.established]]
+        if r.debated:
+            lines += ["", "DEBATED (only say 'some studies suggest', never as the main point):",
+                      *[f"- {f.text}" for f in r.debated]]
+        lines += ["", "SURPRISING DETAILS:", *[f"- {d.text}" for d in r.surprising_details]]
+        lines += ["", "MYTH vs TRUTH:", *[f"- Myth: {m.myth} Truth: {m.truth}" for m in r.misconceptions]]
         return "\n".join(lines)
+
+
+def _reliable_first(results: list[Result]) -> list[Result]:
+    return sorted(results, key=lambda r: not any(d in r.url for d in PREFERRED))
 
 
 def _collect_sources(topic: str) -> tuple[list[str], list[str]]:
     urls, texts = [], []
     for suffix in QUERY_SUFFIXES:
-        for r in search(f"{topic} {suffix}"):
+        for r in _reliable_first(search(f"{topic} {suffix}")):
             if len(urls) >= MAX_PAGES:
                 return urls, texts
             if r.url in urls:

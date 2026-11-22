@@ -9,9 +9,10 @@ Verified facts (the source of truth):
 $facts
 
 First, list weaknesses: read the script as a viewer who knows NOTHING about the topic.
-For every real problem give: the criterion it hurts (hook, accuracy, clarity, logic, humor,
-pacing or originality), the exact quote, and the problem. Only list real problems.
-Do not list sentences that are fine. Look especially for:
+For every problem give: the criterion it hurts (hook, accuracy, clarity, logic, relatability,
+humor, pacing or originality), the quote (ONE exact sentence copied from the script), the problem,
+and real_problem: true if the sentence must change, false if it is only a remark
+("no issues", "good pacing", "fine"). Do not list sentences that are fine. Look especially for:
 - sentences that address the viewer about something they never did (e.g. "remember when you
   wore..." about an experiment the viewer was not in)
 - comparisons or metaphors that are confusing or do not match the idea
@@ -28,7 +29,8 @@ A criterion with any weakness listed above scores at most 7.
 - clarity: is ONE idea explained simply, with a concrete example?
 - logic: does every sentence make sense to a viewer who knows nothing? Are comparisons clear
   and correct? Is the experiment described as something other people did?
-- humor: is the humor natural and does it fit the tone? Announcing a joke ("here's the joke") is weak.
+- relatability: does the viewer recognize themselves in a concrete everyday example?
+- humor: is there natural humor that fits the tone? Announcing a joke ("here's the joke") is weak.
 - pacing: short spoken sentences, no filler, no repetition, a clear ending?
 - originality: does it avoid generic phrases and cliches?
 

@@ -77,6 +77,18 @@ class Brand(BaseModel):
     look: Look = Look()
     prompts: str  # folder in backend/prompts/
     min_quality_score: float = Field(7, ge=1, le=10)
+    # Reviewer criteria that count for this brand. A comedy brand adds "humor".
+    review_criteria: list[str] = Field(default_factory=lambda: [
+        "hook", "accuracy", "clarity", "logic", "relatability", "pacing", "originality"])
+
+    @field_validator("review_criteria")
+    @classmethod
+    def known_criteria(cls, v: list[str]) -> list[str]:
+        from app.pipeline.reviewer import CRITERIA  # local import: reviewer imports Brand
+        unknown = set(v) - set(CRITERIA)
+        if unknown or "accuracy" not in v:
+            raise ValueError(f"review_criteria must include 'accuracy' and use only {list(CRITERIA)}")
+        return v
 
     @property
     def size(self) -> tuple[int, int]:

@@ -1,7 +1,7 @@
 """Reviewer role: scores a draft. The pass/fail rule is applied in code, not by the LLM."""
 from typing import Literal, get_args
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from app.brand import Brand
 from app.pipeline.writer import Draft
@@ -12,8 +12,8 @@ MIN_ANY = 5  # no criterion may score below this
 MIN_ACCURACY = 7
 WEAKNESS_CAP = 7  # a criterion with a listed weakness scores at most this
 
-Criterion = Literal["hook", "accuracy", "clarity", "logic", "humor", "pacing", "originality"]
-CRITERIA: tuple[str, ...] = get_args(Criterion)
+Criterion = Literal["hook", "accuracy", "clarity", "logic", "relatability", "humor", "pacing", "originality"]
+CRITERIA: tuple[str, ...] = get_args(Criterion)  # all are scored; the brand config picks which ones count
 
 
 class Score(BaseModel):
@@ -23,8 +23,9 @@ class Score(BaseModel):
 
 class Weakness(BaseModel):
     criterion: Criterion
-    quote: str
+    quote: str  # one exact sentence from the script
     problem: str
+    real_problem: bool  # False for remarks like "no issues" or "good pacing"
 
 
 class Review(BaseModel):
@@ -33,19 +34,25 @@ class Review(BaseModel):
     accuracy: Score
     clarity: Score
     logic: Score
+    relatability: Score
     humor: Score
     pacing: Score
     originality: Score
     best_hook: int = Field(ge=1, le=3)
     fixes: list[str]
+    _criteria: tuple[str, ...] = PrivateAttr(default=CRITERIA)  # set from the brand config
 
     def scores(self) -> dict[str, int]:
-        """Final scores: the model's score, capped where a weakness was listed."""
-        weak = {w.criterion for w in self.weaknesses}
+        """Final scores for the brand's criteria: the model's score, capped where a real weakness was listed."""
+        weak = {w.criterion for w in self.real_weaknesses()}
         return {
             k: min(getattr(self, k).score, WEAKNESS_CAP) if k in weak else getattr(self, k).score
-            for k in CRITERIA
+            for k in self._criteria
         }
+
+    def real_weaknesses(self) -> list[Weakness]:
+        """Real problems on criteria this brand cares about."""
+        return [w for w in self.weaknesses if w.real_problem and w.criterion in self._criteria]
 
     def average(self) -> float:
         s = self.scores()
@@ -71,4 +78,6 @@ def review_draft(brand: Brand, topic: str, facts: str, draft: Draft) -> Review:
         brand_name=brand.name, niche=brand.niche, tone=brand.tone,
         topic=topic, facts=facts, script=_as_text(draft),
     )
-    return chat_json(system, "Review the script now.", Review, temperature=0)
+    review = chat_json(system, "Review the script now.", Review, temperature=0)
+    review._criteria = tuple(brand.review_criteria)
+    return review
