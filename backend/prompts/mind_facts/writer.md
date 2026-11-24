@@ -37,6 +37,16 @@ Rules:
 - The body explains ONE idea clearly. Use one concrete, specific detail from the research
   (an experiment, an object, a number) and one everyday example the viewer recognizes.
 - Light humor only when it fits naturally (one line at most), built on a specific detail. Never force or announce a joke.
+- ENJOYABLE: sound like a smart friend telling you something surprising, not a teacher giving a lecture.
+  - Talk to the viewer with "you". A question about an everyday moment they know is great
+    ("Ever walk into a room and forget why you came in?"). Never say the viewer was in a study.
+  - Every sentence connects to the one before: each point answers the question the last one raised.
+    Bridge into the study or the surprising fact with WHY it matters, never with filler like
+    "here's the crazy part" or "interestingly".
+  - Build up: the most surprising fact comes late, and the last line is a satisfying payoff that changes
+    how the viewer sees their own day.
+  - Vary the rhythm: mix very short punchy sentences ("You're not.") with medium ones. Never two
+    sentences that say the same thing in different words.
 - Short sentences. Spoken language. No lists, no headings, no emojis, no stage directions.
 - The CTA is one short sentence that invites a follow or a comment, and fits the topic.
 - Do not start the body by repeating the hook.

@@ -216,6 +216,7 @@ long-form highlight (16:9), with captions and optional voice-over. Own or permit
 ## Phase 7 (Future): SaaS readiness
 - [ ] Switch to Postgres via `DATABASE_URL`
 - [ ] Multi-tenant: users, `owner_id` on brands, auth
+- [ ] RBAC: roles (owner, editor, viewer) checked in the API layer; UI hides actions a role cannot do
 - [ ] Object storage (S3-compatible) for `storage/`
 - [ ] Multiple workers / remote GPU pool
 - [ ] Billing and usage limits

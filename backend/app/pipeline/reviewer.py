@@ -14,7 +14,7 @@ WEAKNESS_CAP = 7  # a criterion with a listed weakness scores at most this
 
 # criteria a brand can pick (review_criteria); the brand's reviewer prompt explains each one it uses
 CRITERIA: tuple[str, ...] = ("hook", "accuracy", "clarity", "logic", "relatability", "humor", "pacing",
-                             "originality", "laugh", "story", "punchline")
+                             "originality", "laugh", "story", "punchline", "enjoyable")
 
 
 class Score(BaseModel):

@@ -8,11 +8,15 @@ uv run python -m app.cli make --brand mind_facts --gates      # pause after each
 uv run python -m app.cli approve --job 3                      # accept the result, run the next step
 uv run python -m app.cli redo --job 3                         # run the current step again
 uv run python -m app.cli jobs                                 # list jobs
+uv run python -m app.cli source --url "https://youtube.com/watch?v=..."   # ClipForge: add + prepare a long video
+uv run python -m app.cli source --file ~/Movies/stream.mp4
+uv run python -m app.cli sources                              # list ClipForge sources
+uv run python -m app.cli detect --source 1                    # ClipForge: find hot moments
 """
 import argparse
 import logging
 
-from app.dependencies import brand, job_service, topic_service
+from app.dependencies import brand, job_service, source_service, topic_service
 from app.models import Job, JobStatus
 
 
@@ -50,6 +54,24 @@ def list_jobs() -> None:
         print(f"{j.id:4}  {j.brand}  {j.topic}  [{j.stage}: {j.status}]  {j.error[:80]}")
 
 
+def add_source(url: str | None, file: str | None) -> None:
+    service = source_service()
+    s = service.add(url=url, file=file)
+    print(f"[source {s.id}] preparing -> {s.folder}")
+    s = service.prepare(s.id)
+    print(f"[source {s.id}] {s.status}: {s.title} ({s.duration / 3600:.1f} h) {s.error}")
+
+
+def detect_moments(source_id: int) -> None:
+    for c in source_service().detect(source_id):
+        print(f"{c.peak / 60:6.1f} min  score {c.score:.2f}  {c.signals}  {c.text[:90]}")
+
+
+def list_sources() -> None:
+    for s in source_service().list_sources():
+        print(f"{s.id:4}  [{s.status}]  {s.duration / 3600:4.1f} h  {s.title}  {s.error[:80]}")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
     parser = argparse.ArgumentParser(prog="app.cli")
@@ -68,6 +90,13 @@ def main() -> None:
     r = sub.add_parser("redo", help="run the current step again")
     r.add_argument("--job", type=int, required=True)
     sub.add_parser("jobs", help="list jobs")
+    s = sub.add_parser("source", help="ClipForge: add a long video (download + audio)")
+    src = s.add_mutually_exclusive_group(required=True)
+    src.add_argument("--url")
+    src.add_argument("--file")
+    sub.add_parser("sources", help="list ClipForge sources")
+    d = sub.add_parser("detect", help="ClipForge: find hot moments in a source")
+    d.add_argument("--source", type=int, required=True)
     args = parser.parse_args()
 
     if args.command == "make":
@@ -78,6 +107,12 @@ def main() -> None:
         report(job_service().approve(args.job, args.auto))
     elif args.command == "redo":
         report(job_service().redo(args.job))
+    elif args.command == "source":
+        add_source(args.url, args.file)
+    elif args.command == "sources":
+        list_sources()
+    elif args.command == "detect":
+        detect_moments(args.source)
     else:
         list_jobs()
 

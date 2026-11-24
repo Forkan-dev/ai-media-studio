@@ -48,4 +48,4 @@ look:
 
 prompts: mind_facts      # folder in backend/prompts/
 min_quality_score: 7     # Reviewer pass mark (1-10)
-review_criteria: [hook, accuracy, clarity, logic, relatability, pacing, originality]   # a comedy brand adds humor
+review_criteria: [hook, accuracy, clarity, logic, relatability, pacing, originality, enjoyable]   # a comedy brand adds humor
