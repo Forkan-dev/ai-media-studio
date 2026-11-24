@@ -15,8 +15,18 @@ class StageContext:
     style: str
     folder: Path
 
-    def research(self) -> ResearchResult:
-        return ResearchResult.model_validate_json((self.folder / "research.json").read_text())
+    def research(self) -> ResearchResult | None:
+        """None for brands without research (fiction)."""
+        path = self.folder / "research.json"
+        return ResearchResult.model_validate_json(path.read_text()) if path.exists() else None
+
+    def facts(self) -> str:
+        research = self.research()
+        return research.facts_text() if research else ""
+
+    def core_fact(self) -> str:
+        research = self.research()
+        return research.research.core_fact.text if research else ""
 
     def narration(self) -> str:
         return (self.folder / "script.txt").read_text()

@@ -10,7 +10,7 @@ class ScriptStage(Stage):
     gate = True
 
     def run(self, ctx: StageContext) -> list[str]:
-        script = make_script(ctx.brand, ctx.topic, ctx.research().facts_text())
+        script = make_script(ctx.brand, ctx.topic, ctx.facts())
         review = script.best.review
         (ctx.folder / "script.txt").write_text(script.narration())
         (ctx.folder / "script.json").write_text(json.dumps({

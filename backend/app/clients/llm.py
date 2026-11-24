@@ -41,6 +41,8 @@ def chat_json(
 
 
 def unload(model: str | None = None) -> None:
-    """Free the model's memory now (e.g. before SDXL needs it)."""
-    httpx.post(f"{settings.ollama_url}/api/generate",
-               json={"model": model or settings.llm_model, "keep_alive": 0}, timeout=60)
+    """Free the model's memory now (e.g. before SDXL needs it). No model given: every loaded model."""
+    models = [model] if model else [m["name"] for m in httpx.get(f"{settings.ollama_url}/api/ps", timeout=30)
+                                    .json().get("models", [])]
+    for m in models:
+        httpx.post(f"{settings.ollama_url}/api/generate", json={"model": m, "keep_alive": 0}, timeout=60)

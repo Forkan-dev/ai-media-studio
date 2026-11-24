@@ -1,6 +1,7 @@
 """Storyboard: script -> scenes. Code splits scenes and picks motion/transition; the LLM writes image prompts."""
 import random
 import re
+from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError, create_model
 
@@ -10,6 +11,9 @@ from app.prompts import render
 from app.clients.llm import chat_json
 
 MIN_SCENE_WORDS = 6  # shorter sentences are joined with the next one
+MAX_CHARACTERS = 4
+
+Emotion = Literal["calm", "curious", "happy", "excited", "confused", "nervous", "panicked", "shocked", "sad"]
 
 
 class Scene(BaseModel):
@@ -17,6 +21,7 @@ class Scene(BaseModel):
     image_prompt: str  # subject only; the brand style is added at image generation
     motion: str
     transition: str  # transition INTO this scene (unused for the first scene)
+    emotion: Emotion = "calm"  # how the line is spoken (voice intensity)
 
 
 class Storyboard(BaseModel):
@@ -27,9 +32,24 @@ class Storyboard(BaseModel):
 MAX_TRIES = 3
 
 
-def _prompts_schema(count: int) -> type[BaseModel]:
-    """Schema that forces exactly `count` prompts (Ollama enforces min/max items)."""
-    return create_model("ImagePrompts", image_prompts=(list[str], Field(min_length=count, max_length=count)))
+class Character(BaseModel):
+    """A story character besides the main one, described once so it looks the same in every scene."""
+    name: str = Field(description="one ALL CAPS word used as a token in the prompts, e.g. BOSS")
+    look: str = Field(description="what the character looks like: body, face, hair, clothes")
+
+
+class Shot(BaseModel):
+    image_prompt: str
+    emotion: Emotion
+
+
+def _shots_schema(count: int) -> type[BaseModel]:
+    """Schema that forces exactly `count` shots (Ollama enforces min/max items)."""
+    return create_model(
+        "Shots",
+        characters=(list[Character], Field(max_length=MAX_CHARACTERS)),
+        shots=(list[Shot], Field(min_length=count, max_length=count)),
+    )
 
 
 def split_scenes(text: str) -> list[str]:
@@ -50,9 +70,12 @@ CHARACTER_TOKEN = "MAIN_CHARACTER"
 CHARACTER_PHRASES = r"\bthe (?:main character|protagonist)\b"
 
 
-def insert_character(prompt: str, character: str) -> str:
-    """The code, not the LLM, writes the full character description into every prompt."""
+def insert_character(prompt: str, character: str, others: list[Character] | None = None) -> str:
+    """The code, not the LLM, writes the full character descriptions into every prompt."""
     prompt = re.sub(CHARACTER_PHRASES, CHARACTER_TOKEN, prompt, flags=re.IGNORECASE)
+    for c in others or []:
+        if c.name.isupper() and c.name != CHARACTER_TOKEN:
+            prompt = re.sub(rf"\b{re.escape(c.name)}\b", c.look, prompt)
     return prompt.replace(CHARACTER_TOKEN, character)
 
 
@@ -78,11 +101,11 @@ def make_storyboard(brand: Brand, topic: str, narration: str, style: str | None 
     st = brand.images.style(style)
     system = render(brand.prompts, "storyboard", brand_name=brand.name, niche=brand.niche,
                     topic=topic, scenes=numbered, others=st.others)
-    schema = _prompts_schema(len(lines))
+    schema = _shots_schema(len(lines))
     for attempt in range(1, MAX_TRIES + 1):
         try:
-            prompts = chat_json(system, f"Write all {len(lines)} image descriptions now.", schema,
-                                temperature=0.7).image_prompts
+            result = chat_json(system, f"Write the characters and all {len(lines)} shots now.", schema,
+                               temperature=0.7)
             break
         except ValidationError:
             if attempt == MAX_TRIES:
@@ -91,6 +114,8 @@ def make_storyboard(brand: Brand, topic: str, narration: str, style: str | None 
     motions = _pick_no_repeat(brand.look.motions, len(lines))
     transitions = _pick_no_repeat(brand.look.transitions, len(lines))
     return Storyboard(style=style, scenes=[
-        Scene(narration=n, image_prompt=insert_character(no_text(p), st.character), motion=m, transition=t)
-        for n, p, m, t in zip(lines, prompts, motions, transitions)
+        Scene(narration=n, image_prompt=insert_character(no_text(shot.image_prompt), st.character,
+                                                         result.characters),
+              motion=m, transition=t, emotion=shot.emotion)
+        for n, shot, m, t in zip(lines, result.shots, motions, transitions)
     ])

@@ -10,9 +10,9 @@ from typing import Literal
 from app.brand import Brand
 from app.pipeline.fact_check import check_sentences, sentences
 from app.pipeline.reviewer import Review, review_draft
-from app.pipeline.writer import WORDS_PER_SECOND, Draft, remove_duplicates, rewrite_sentence, write_draft
+from app.pipeline.writer import (WORDS_PER_SECOND, Draft, plan_story, remove_duplicates, rewrite_sentence,
+                                 write_draft)
 
-STRUCTURES = ("story", "myth_vs_fact")
 MAX_REPAIRS = 1
 LENGTH_TOLERANCE = 0.15  # script length must be within ±15% of the brand's target
 HOOKS = 3  # units 0..2 are the hooks, then body sentences, then the CTA
@@ -70,7 +70,9 @@ def _length_note(brand: Brand, d: Draft) -> str | None:
 
 def _try(brand: Brand, topic: str, facts: str, structure: str,
          feedback: list[str] | None = None, previous: Draft | None = None) -> Candidate:
-    draft = write_draft(brand, topic, facts, structure, feedback, previous)
+    # story mode: a new draft is written from a plan; an edit keeps the previous draft's story
+    outline = plan_story(brand, topic, structure) if brand.script_mode == "story" and not previous else None
+    draft = write_draft(brand, topic, facts, structure, feedback, previous, outline)
     return Candidate(structure, draft, review_draft(brand, topic, facts, draft), _length_note(brand, draft))
 
 
@@ -140,7 +142,8 @@ def _repair(brand: Brand, topic: str, facts: str, c: Candidate) -> Candidate:
     for i, notes in problems.items():
         before, after = _context(units, i)
         new_units[i] = rewrite_sentence(brand, topic, facts, before, units[i], after, notes)
-    draft = remove_duplicates(_draft(new_units))  # a rewritten sentence can repeat its neighbour
+    # a rewritten sentence can repeat its neighbour
+    draft = remove_duplicates(_draft(new_units), strict=brand.script_mode == "story")
     return Candidate(c.structure, draft, review_draft(brand, topic, facts, draft), _length_note(brand, draft))
 
 
@@ -162,7 +165,8 @@ def _remove_wrong(c: Candidate) -> list[str]:
 
 
 def make_script(brand: Brand, topic: str, facts: str) -> ScriptResult:
-    attempts = [_try(brand, topic, facts, s) for s in STRUCTURES]
+    """`facts` is empty for brands without research (fiction)."""
+    attempts = [_try(brand, topic, facts, s) for s in brand.script_structures[:2]]
     best = _best(attempts)
     for _ in range(MAX_REPAIRS):
         if best.review.passed(brand.min_quality_score) and best.length_note is None:
@@ -172,12 +176,16 @@ def make_script(brand: Brand, topic: str, facts: str) -> ScriptResult:
         if repaired.review.average() >= best.review.average():
             best = repaired
 
-    _fact_check(brand, facts, best)  # one thinking call, always
-    removed = _remove_wrong(best)
+    removed: list[str] = []
+    if brand.pipeline.fact_check:
+        _fact_check(brand, facts, best)  # one thinking call
+        removed = _remove_wrong(best)
+    else:
+        best.good_hooks = list(range(1, HOOKS + 1))  # fiction: every hook is allowed
 
     flags = []
-    if not best.review.passed(brand.min_quality_score):
-        flags.append(f"Review score {best.review.average():.1f} is below {brand.min_quality_score}: "
+    if reasons := best.review.fail_reasons(brand.min_quality_score):
+        flags.append(f"Review failed ({', '.join(reasons)}): "
                      + "; ".join(w.problem for w in best.review.real_weaknesses()[:3]))
     if best.length_note:
         flags.append(best.length_note)

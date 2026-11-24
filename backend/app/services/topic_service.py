@@ -26,7 +26,7 @@ class TopicService:
                 continue
             known.append(topic_key(idea.title))
             new.append(Topic(brand=brand.slug, title=idea.title.strip(), angle=idea.angle.strip(),
-                             scores=idea.scores(), score=idea.score()))
+                             scores=idea.scores, score=idea.score()))
         self._topics.add_all(new)
         return new
 

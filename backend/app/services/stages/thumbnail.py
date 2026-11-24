@@ -11,8 +11,7 @@ class ThumbnailStage(Stage):
 
     def run(self, ctx: StageContext) -> list[str]:
         meta = Metadata.model_validate_json((ctx.folder / "metadata.json").read_text())
-        plan = plan_thumbnail(ctx.brand, ctx.style, meta.youtube_title, ctx.narration(),
-                              ctx.research().research.core_fact.text)
+        plan = plan_thumbnail(ctx.brand, ctx.style, meta.youtube_title, ctx.narration(), ctx.core_fact())
         unload()  # LLM out, SDXL in
         _, ok = make_thumbnail(ctx.brand, ctx.style, plan, ctx.folder)
         return [] if ok else ["Thumbnail image may not match the style or prompt"]

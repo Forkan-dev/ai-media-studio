@@ -21,4 +21,4 @@ def topic_service() -> TopicService:
 
 
 def job_service() -> JobService:
-    return JobService(JobRepository(SessionLocal), topic_service(), video_stages())
+    return JobService(JobRepository(SessionLocal), topic_service(), video_stages)

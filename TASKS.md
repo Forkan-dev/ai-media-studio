@@ -1,6 +1,6 @@
 # Tasks & Progress
 
-Legend: `[x]` done · `[~]` in progress · `[ ]` not started
+Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[-]` dropped
 
 See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md) for design.
 
@@ -12,12 +12,28 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 | 1 | Week 1–2: One video end to end | In progress |
 | 2 | Week 3: Subtitles, music, thumbnails, both aspect ratios | Not started |
 | 3 | Week 4: LangGraph flow, fact-check loop, job queue with resume | Not started |
+| 4A | ClipForge: viral clips from long gaming videos | Not started |
 | 4 | Week 5: Vue UI (Review screen first) | Not started |
 | 5 | Week 6: YouTube + Facebook publishing and scheduling | Not started |
 | 6 | Week 7+: Analytics feedback, Long→Shorts, AI clips, series mode | Not started |
 | 7 | Future: SaaS readiness | Not started |
 
 **Overall: 1 / 8 phases complete.** Update this table as phases finish.
+
+## Next up (in this order)
+1. **Before ClipForge** (things ClipForge depends on):
+   - [ ] Commit the open work (Absurd Stories, story mode, emotion voice, per-brand reviewer)
+   - [ ] Resume after crash: a job left `running` (process killed) can be continued from its stage
+   - [ ] `model_manager`: only one heavy model in memory (LLM / SDXL / Whisper / Chatterbox); restart-safe ComfyUI (image 5 timed out from memory swap)
+   - [ ] Caption fix: active word baseline, position, bigger (ClipForge reuses captions)
+   - [ ] Audio ducking (sidechain): needed for ClipForge voice-over over game audio
+   - [ ] 9:16 and 16:9 output from one render path (ClipForge makes both)
+   - [ ] Chatterbox pace: brand `voice.speed` also for Chatterbox (time-stretch), pauses between sentences
+2. **ClipForge** (gaming clipper, see Phase 4A)
+3. **UI** (Phase 4: gates + ClipForge screens)
+
+Paused: **Absurd Stories** brand (local 9B models cannot write good comedy: 5 tests, all ~6/10). Config kept.
+Later: **Bring your own script**: per-brand `writer: local | gemini | manual` (free cloud model or pasted script).
 
 ---
 
@@ -64,10 +80,13 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
   - [x] Image vision check (Qwen3.5) + `MAIN_CHARACTER` token; thumbnail (plan + SDXL + Impact text); metadata step
   - [x] CLI: `uv run python -m app.cli make --brand <slug> --topic "<topic>" --style <style>`
   - [x] Switched default LLM to Qwen3.5 9B q4_K_M (old Qwen3 8B removed)
-- [ ] **Pipeline flexibility** (see ARCHITECTURE §3 "Pipeline flexibility"):
-  - [ ] `pipeline:` block in brand YAML (type, research, fact_check, sensitivity, review)
+- [~] **Pipeline flexibility** (see ARCHITECTURE §3 "Pipeline flexibility"):
+  - [x] `pipeline:` block in brand YAML (research, fact_check); `script_mode` facts|story, `script_structures`, `topic_criteria`, `review_criteria`, `review_model`
   - [ ] Adaptive research: extra rounds if facts < `min_facts`; skip topic if still not enough
-  - [ ] Steps on/off per brand (e.g. no research/fact-check for fiction)
+  - [x] Steps on/off per brand (e.g. no research/fact-check for fiction)
+  - [x] Story mode: outline (rule, setup, 3 beats, punchline) before writing; stricter repeat removal
+  - [x] Emotion voice: storyboard emotion per scene → Chatterbox intensity (`voice.scene_emotions`)
+  - [x] Recurring characters in storyboard (named tokens replaced by one look)
   - [ ] Sensitivity `high`: 2 sources per claim, Reviewer min 8, no jokes on sensitive part, disclaimer
   - [ ] Ranker flags sensitive topics → strict rules for that video only
 - [x] Storyboard: code splits scenes + picks motion/transition; LLM writes doodle image prompts; quoted text removed
@@ -106,10 +125,10 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] ✅ Milestone: publish-ready Short and long-form video
 
 ## Phase 3 (Week 4): Orchestration and reliability
-- [ ] LangGraph graph with all nodes
-- [ ] Script brain steps as LangGraph nodes (discovery → ranking → research → write → edit → review → fact_check)
-- [ ] Topic memory: skip topics already covered (Topic table + similarity)
-- [ ] `reviewer_model` setting (e.g. Qwen3 14B as Reviewer)
+- [-] LangGraph graph with all nodes (not needed: jobs + stages + gates cover it)
+- [-] Script brain steps as LangGraph nodes (not needed)
+- [x] Topic memory: skip topics already covered (Topic table + similarity)
+- [x] `review_model` setting per brand (tested Gemma 4 12B: scores everything ~7.5, weak judge)
 - [ ] `below_quality` job status shown on dashboard
 - [ ] Scheduler: add jobs per brand from its schedule
 - [ ] Hook memory (past hooks passed as "do not reuse")
@@ -125,6 +144,25 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [~] FastAPI routes: topics (list, discover), jobs (list, get, create, approve, redo) done; brands, batch, edit files, single image redo to do
 - [ ] WebSocket for live step progress + logs
 - [ ] ✅ Milestone: queue 3 jobs, kill worker mid-run, it resumes correctly
+
+## Phase 4A: ClipForge (viral clips from long gaming videos)
+**Goal:** one long stream/gameplay video → 10–20 ranked viral moments → Shorts/Reels (9:16) + a 5–10 min
+long-form highlight (16:9), with captions and optional voice-over. Own or permitted content only.
+- [ ] **1. Source**: URL (yt-dlp) or local file; audio extract; Whisper transcript with word times;
+      chat replay (streams) + "most replayed" heatmap when available; saved in DB (`sources`)
+- [ ] **2. Detection**: per-second signals: chat spikes, heatmap, loudness peaks, scene changes, hype words
+      → combined score → candidate moments
+- [ ] **3. Ranking**: Qwen checks top candidates (why viral, title, score); good start (setup, sentence
+      start) and finish (reaction settles, pause); 15–60 s; saved in DB (`clips`, ranked)
+- [ ] **4. Short render**: 9:16 layouts (facecam stacked / center crop / blurred background, per channel
+      config); word-by-word captions; original audio
+- [ ] **5. Voice mode per clip**: original · voice-over (Chatterbox streamer-style lines, original ducked)
+      · mix (voice-over hook, then original); lines editable at the gate
+- [ ] **6. Long form**: top 8–15 moments in time order, 16:9, transitions, optional title cards, captions
+- [ ] **7. Jobs + API**: ClipForge stages as a job (gates: pick clips, approve renders); routes
+- [ ] Clean game audio for Whisper (Demucs vocal separation) if transcripts are noisy
+- [ ] Metadata + thumbnail per clip (reuse)
+- [ ] ✅ Milestone: 1-hour stream → ranked clips → 5 Shorts + 1 highlight video approved
 
 ## Phase 4 (Week 5): Vue dashboard
 - [ ] **Approval gate after every step** (topics, research, script + rating, images, thumbnail): approve, edit, or keep as is and continue, even with a bad rating
@@ -146,6 +184,9 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Brands screen: edit config, LoRA, voice, music, schedule
 - [ ] Brand studio: "Get topics" button (runs discovery) + saved topics list (best first, used topics hidden) → pick one → make video
 - [ ] Settings: models, API keys
+- [ ] **ClipForge screens**: add source (URL / file) → progress → ranked clip list (score, reason, title)
+      → clip preview with trim handles, layout picker, voice toggle (original / voice-over / mix),
+      editable voice-over lines and captions → approve → long-form builder (pick + reorder moments)
 - [ ] ✅ Milestone: full review and approve flow from the browser
 
 ## Phase 5 (Week 6): Publishing
@@ -165,15 +206,7 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 - [ ] Analytics screen: views, retention, revenue per brand, top topics
 - [ ] Feedback loop: winning topics/formats boost topic scoring
 - [ ] Long → Shorts: auto-cut 3–5 Shorts from each long video
-- [ ] **Video → Shorts clipper** (any long video, incl. gameplay; own/permitted content only)
-  - [ ] Download with yt-dlp
-  - [ ] Whisper transcript with word times
-  - [ ] Qwen3 scores transcript segments (hook, peaks, jokes)
-  - [ ] Gameplay: audio-peak + scene-change detection (FFmpeg, PySceneDetect)
-  - [ ] Cut best 30–60s clips
-  - [ ] 9:16 crop: face tracking (MediaPipe), split layout or blurred background for gameplay
-  - [ ] Word-by-word captions + render
-  - [ ] Clips go to the Review screen
+- [ ] Video → Shorts clipper: moved to **Phase 4A ClipForge**
 - [ ] Optional AI video clips for key scenes
 - [ ] Series mode: auto-numbered "Lesson N"
 - [ ] Character LoRA per brand (training guide + workflow)
@@ -194,4 +227,5 @@ See [README.md](README.md) for the product and [ARCHITECTURE.md](ARCHITECTURE.md
 |---|---|
 | 2026-11-17 | Project docs created (README, ARCHITECTURE, TASKS). No code yet. |
 | 2026-11-17 | Added models/limits, video look, uniqueness rules, search, sqlite-vec. |
+| 2026-11-24 | Absurd Stories paused. New Phase 4A ClipForge (gaming clipper). "Next up" order: prerequisites → ClipForge → UI. |
 | 2026-11-19 | Phase 0 done. Script brain design (Ranker/Writer/Editor/Reviewer + quality gate), Mind Facts brand, parametric camera moves, SFX. Wan video removed. |

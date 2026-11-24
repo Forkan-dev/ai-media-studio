@@ -1,7 +1,7 @@
 """Reviewer role: scores a draft. The pass/fail rule is applied in code, not by the LLM."""
-from typing import Literal, get_args
+from functools import cache
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, create_model
 
 from app.brand import Brand
 from app.pipeline.writer import Draft
@@ -12,8 +12,9 @@ MIN_ANY = 5  # no criterion may score below this
 MIN_ACCURACY = 7
 WEAKNESS_CAP = 7  # a criterion with a listed weakness scores at most this
 
-Criterion = Literal["hook", "accuracy", "clarity", "logic", "relatability", "humor", "pacing", "originality"]
-CRITERIA: tuple[str, ...] = get_args(Criterion)  # all are scored; the brand config picks which ones count
+# criteria a brand can pick (review_criteria); the brand's reviewer prompt explains each one it uses
+CRITERIA: tuple[str, ...] = ("hook", "accuracy", "clarity", "logic", "relatability", "humor", "pacing",
+                             "originality", "laugh", "story", "punchline")
 
 
 class Score(BaseModel):
@@ -22,25 +23,16 @@ class Score(BaseModel):
 
 
 class Weakness(BaseModel):
-    criterion: Criterion
+    criterion: str  # one of the brand's review_criteria
     quote: str  # one exact sentence from the script
     problem: str
     real_problem: bool  # False for remarks like "no issues" or "good pacing"
 
 
 class Review(BaseModel):
+    """Base review; the score fields (one per brand criterion) are added by _review_schema."""
     weaknesses: list[Weakness]  # first: find problems before scoring, so scores are not inflated
-    hook: Score
-    accuracy: Score
-    clarity: Score
-    logic: Score
-    relatability: Score
-    humor: Score
-    pacing: Score
-    originality: Score
-    best_hook: int = Field(ge=1, le=3)
-    fixes: list[str]
-    _criteria: tuple[str, ...] = PrivateAttr(default=CRITERIA)  # set from the brand config
+    _criteria: tuple[str, ...] = PrivateAttr(default=())  # set from the brand config
 
     def scores(self) -> dict[str, int]:
         """Final scores for the brand's criteria: the model's score, capped where a real weakness was listed."""
@@ -58,18 +50,31 @@ class Review(BaseModel):
         s = self.scores()
         return sum(s.values()) / len(s)
 
+    def fail_reasons(self, min_average: float) -> list[str]:
+        """Why the review fails the pass rule (empty = passed)."""
+        s, reasons = self.scores(), []
+        if self.average() < min_average:
+            reasons.append(f"average {self.average():.1f} is below {min_average}")
+        reasons += [f"{k} {v} is below {MIN_ANY}" for k, v in s.items() if v < MIN_ANY]
+        if "accuracy" in s and MIN_ANY <= s["accuracy"] < MIN_ACCURACY:
+            reasons.append(f"accuracy {s['accuracy']} is below {MIN_ACCURACY}")
+        return reasons
+
     def passed(self, min_average: float) -> bool:
-        s = self.scores()
-        return (
-            self.average() >= min_average
-            and min(s.values()) >= MIN_ANY
-            and s["accuracy"] >= MIN_ACCURACY
-        )
+        return not self.fail_reasons(min_average)
 
 
 def _as_text(d: Draft) -> str:
     hooks = "\n".join(f"Hook {i}: {h}" for i, h in enumerate(d.hooks, 1))
     return f"{hooks}\n\nBody: {d.body}\n\nCTA: {d.cta}"
+
+
+@cache
+def _review_schema(criteria: tuple[str, ...]) -> type[Review]:
+    """Review with one Score per brand criterion, in order: weaknesses -> scores -> best hook -> fixes."""
+    scores = {c: (Score, ...) for c in criteria}
+    return create_model("Review", __base__=Review, **scores,
+                        best_hook=(int, Field(ge=1, le=3)), fixes=(list[str], ...))
 
 
 def review_draft(brand: Brand, topic: str, facts: str, draft: Draft) -> Review:
@@ -78,6 +83,8 @@ def review_draft(brand: Brand, topic: str, facts: str, draft: Draft) -> Review:
         brand_name=brand.name, niche=brand.niche, tone=brand.tone,
         topic=topic, facts=facts, script=_as_text(draft),
     )
-    review = chat_json(system, "Review the script now.", Review, temperature=0)
+    criteria = tuple(brand.review_criteria)
+    review = chat_json(system, "Review the script now.", _review_schema(criteria), temperature=0,
+                       model=brand.review_model)
     review._criteria = tuple(brand.review_criteria)
     return review

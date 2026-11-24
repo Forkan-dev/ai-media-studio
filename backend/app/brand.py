@@ -13,7 +13,8 @@ class Voice(BaseModel):
     voice: str = "af_heart"  # kokoro voice name
     speed: float = 1.0
     voice_ref: str | None = None  # chatterbox: reference clip to clone
-    exaggeration: float = 0.5  # chatterbox: emotion intensity
+    exaggeration: float = 0.5  # chatterbox: emotion intensity when a scene has no emotion
+    scene_emotions: bool = False  # chatterbox: each scene's emotion sets the intensity
 
 
 class ImageStyle(BaseModel):
@@ -64,6 +65,12 @@ class Look(BaseModel):
         return v
 
 
+class Pipeline(BaseModel):
+    """Which steps this brand uses. Fact brands research and fact-check; fiction brands do neither."""
+    research: bool = True  # web research per video (and web search for topic ideas)
+    fact_check: bool = True  # check every sentence against the research
+
+
 class Brand(BaseModel):
     slug: str
     name: str
@@ -75,20 +82,29 @@ class Brand(BaseModel):
     voice: Voice = Voice()
     images: Images
     look: Look = Look()
+    pipeline: Pipeline = Pipeline()
     prompts: str  # folder in backend/prompts/
     min_quality_score: float = Field(7, ge=1, le=10)
     # Reviewer criteria that count for this brand. A comedy brand adds "humor".
     review_criteria: list[str] = Field(default_factory=lambda: [
         "hook", "accuracy", "clarity", "logic", "relatability", "pacing", "originality"])
+    review_model: str | None = None  # Ollama model for the Reviewer; None = the default LLM
+    script_structures: list[str] = Field(default_factory=lambda: ["story", "myth_vs_fact"], min_length=1)
+    # facts: write from research. story: plan the story first (rule, beats, punchline), stricter repeat removal
+    script_mode: Literal["facts", "story"] = "facts"
+    # how topic ideas are scored (1-10 each); the topics prompt explains each one
+    topic_criteria: list[str] = Field(default_factory=lambda: ["curiosity", "relatable", "evidence", "visual"],
+                                      min_length=1)
 
-    @field_validator("review_criteria")
-    @classmethod
-    def known_criteria(cls, v: list[str]) -> list[str]:
+    @model_validator(mode="after")
+    def known_criteria(self):
         from app.pipeline.reviewer import CRITERIA  # local import: reviewer imports Brand
-        unknown = set(v) - set(CRITERIA)
-        if unknown or "accuracy" not in v:
-            raise ValueError(f"review_criteria must include 'accuracy' and use only {list(CRITERIA)}")
-        return v
+        unknown = set(self.review_criteria) - set(CRITERIA)
+        if unknown:
+            raise ValueError(f"unknown review_criteria {sorted(unknown)}; allowed: {list(CRITERIA)}")
+        if self.pipeline.fact_check and "accuracy" not in self.review_criteria:
+            raise ValueError("a brand with fact_check must include 'accuracy' in review_criteria")
+        return self
 
     @property
     def size(self) -> tuple[int, int]:

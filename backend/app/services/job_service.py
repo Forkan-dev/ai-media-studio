@@ -6,6 +6,7 @@ redo     run the current stage again (rejected result, or after a failure)
 """
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from app.brand import Brand, load_brand
@@ -20,11 +21,11 @@ log = logging.getLogger(__name__)
 
 
 class JobService:
-    def __init__(self, jobs: JobRepository, topics: TopicService, stages: list[Stage]):
+    def __init__(self, jobs: JobRepository, topics: TopicService, stages_for: Callable[[Brand], list[Stage]]):
+        """`stages_for(brand)`: the brand's steps in order (fiction brands have no research step)."""
         self._jobs = jobs
         self._topics = topics
-        self._stages = {s.name: s for s in stages}
-        self._order = [s.name for s in stages]
+        self._stages_for = stages_for
 
     # ---------- queries ----------
 
@@ -58,14 +59,14 @@ class JobService:
         folder.mkdir(parents=True, exist_ok=True)
         self._topics.mark_used(brand, topic)
         return self._jobs.save(Job(brand=brand.slug, topic=topic, style=style, folder=str(folder),
-                                   stage=self._order[0], status=JobStatus.RUNNING))
+                                   stage=self._stages_for(brand)[0].name, status=JobStatus.RUNNING))
 
     def run(self, job_id: int, auto: bool = False) -> Job:
         """Run stages from the current one. auto=True: no pauses at gates (one-shot video)."""
         job = self.get(job_id)
         brand = load_brand(job.brand)
         while True:
-            stage = self._stages[job.stage]
+            stage = self._stage(brand, job.stage)
             self._set_status(job, JobStatus.RUNNING)
             log.info("job %s: %s", job.id, stage.name)
             try:
@@ -77,19 +78,19 @@ class JobService:
             job.flags = {**job.flags, stage.name: flags}  # a redo replaces this stage's flags
             if stage.gate and not auto:
                 return self._set_status(job, JobStatus.WAITING)
-            if not self._advance(job):
+            if not self._advance(brand, job):
                 return self._jobs.save(job)
 
     def approve(self, job_id: int, auto: bool = False) -> Job:
         job = self.check_can_approve(job_id)
-        if not self._advance(job):
+        if not self._advance(load_brand(job.brand), job):
             return self._jobs.save(job)
         self._jobs.save(job)
         return self.run(job_id, auto)
 
     def redo(self, job_id: int) -> Job:
         job = self.check_can_redo(job_id)
-        for pattern in self._stages[job.stage].redo_clean:
+        for pattern in self._stage(load_brand(job.brand), job.stage).redo_clean:
             for f in Path(job.folder).glob(pattern):
                 f.unlink()
         return self.run(job_id)
@@ -102,11 +103,15 @@ class JobService:
             job.error = ""
         return self._jobs.save(job)
 
-    def _advance(self, job: Job) -> bool:
+    def _stage(self, brand: Brand, name: str) -> Stage:
+        return next(s for s in self._stages_for(brand) if s.name == name)
+
+    def _advance(self, brand: Brand, job: Job) -> bool:
         """Move to the next stage. Returns False when there is none (the job is finished)."""
-        i = self._order.index(job.stage)
-        if i + 1 < len(self._order):
-            job.stage = self._order[i + 1]
+        order = [s.name for s in self._stages_for(brand)]
+        i = order.index(job.stage)
+        if i + 1 < len(order):
+            job.stage = order[i + 1]
             return True
         self._finish(job)
         return False
@@ -115,7 +120,7 @@ class JobService:
         """Delete temp files, write the summary into the folder."""
         out = Path(job.folder)
         cleanup(out)
-        has_flags = any(job.flags.get(name) for name in self._order)
+        has_flags = any(job.flags.values())
         (out / "review.json").write_text(json.dumps(
             {"status": "needs_attention" if has_flags else "ready_for_review", "flags": job.flags}, indent=1))
         job.status = JobStatus.DONE

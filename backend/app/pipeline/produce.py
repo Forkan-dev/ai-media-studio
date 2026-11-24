@@ -10,7 +10,7 @@ import soundfile as sf
 from app.brand import Brand
 from app.config import settings
 from app.pipeline.image_check import check_image
-from app.pipeline.storyboard import Storyboard
+from app.pipeline.storyboard import Scene, Storyboard
 from app.clients import render
 from app.clients.captions import write_ass
 from app.clients.comfy import ImageSpec, free_memory, generate_image
@@ -66,6 +66,21 @@ def _images(brand: Brand, sb: Storyboard, out: Path) -> tuple[list[Path], list[i
     return paths, [i + 1 for i in todo]  # still-failing images stay; they are flagged for review
 
 
+#  Chatterbox (exaggeration, cfg_weight) per emotion. Higher exaggeration = more intense;
+#  lower cfg_weight keeps intense lines from rushing (Chatterbox guidance). Above ~0.9 gets unstable.
+EMOTION_VOICE: dict[str, tuple[float, float]] = {
+    "calm": (0.4, 0.5), "sad": (0.45, 0.5), "curious": (0.55, 0.5), "happy": (0.6, 0.45),
+    "confused": (0.6, 0.45), "nervous": (0.65, 0.4), "excited": (0.75, 0.35),
+    "panicked": (0.85, 0.3), "shocked": (0.9, 0.3),
+}
+
+
+def _voice_settings(brand: Brand, scene: Scene) -> tuple[float, float]:
+    if brand.voice.scene_emotions:
+        return EMOTION_VOICE[scene.emotion]
+    return brand.voice.exaggeration, 0.5
+
+
 def _voice(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[float]]:
     """Narrate each scene, join with short gaps. Returns the audio file and each scene's duration."""
     v = brand.voice
@@ -73,8 +88,9 @@ def _voice(brand: Brand, sb: Storyboard, out: Path) -> tuple[Path, list[float]]:
     for i, scene in enumerate(sb.scenes, 1):
         path = out / f"scene_{i:02d}.wav"
         if not path.exists():
+            exaggeration, cfg_weight = _voice_settings(brand, scene)
             synthesize(scene.narration, path, engine=v.engine, voice=v.voice, speed=v.speed,
-                       voice_ref=v.voice_ref, exaggeration=v.exaggeration)
+                       voice_ref=v.voice_ref, exaggeration=exaggeration, cfg_weight=cfg_weight)
         audio, sr = sf.read(path)
         chunks += [audio, np.zeros(int(sr * SCENE_GAP))]
         durations.append(len(audio) / sr + SCENE_GAP)

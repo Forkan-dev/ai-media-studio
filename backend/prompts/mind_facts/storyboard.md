@@ -30,7 +30,16 @@ Rules:
 - Objects never have faces, arms or legs.
 - Max 45 words per description.
 
-Return exactly one description per scene.
+Characters: if other people appear in more than one scene (a boss, a friend), list each one ONCE in
+`characters`: name = one ALL CAPS word (e.g. BOSS), look = body, face, hair and clothes. Write that
+name in every description where the person appears; the code replaces it with the look, so they look
+the same in every scene. Leave `characters` empty if there are none.
+
+Emotion: for each shot, pick how the narration line should be SPOKEN: calm, curious, happy, excited,
+confused, nervous, panicked, shocked or sad. Follow the story: most lines are calm or curious,
+surprising moments are excited or shocked.
+
+Return exactly one shot (description + emotion) per scene.
 
 Scenes:
 $scenes

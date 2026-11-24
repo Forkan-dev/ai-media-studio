@@ -1,0 +1,47 @@
+slug: absurd_stories
+name: Absurd Stories
+niche: "absurd comedy stories: funny fictional situations, unexpected endings, ridiculous characters"
+language: en
+tone: playful, deadpan and absurd; tell a ridiculous story completely seriously, like a friend describing the weirdest day of their life, and save the biggest laugh for the end
+format: short            # short = 9:16, long = 16:9
+duration: 60             # target length in seconds
+
+voice:
+  engine: chatterbox     # emotion per scene
+  scene_emotions: true   # each scene's emotion (calm ... shocked) sets the voice intensity
+  exaggeration: 0.5      # used only when a scene has no emotion
+
+images:
+  checkpoint: Juggernaut-XI-byRunDiffusion.safetensors
+  lora: DoodleRedmond-Doodle-DoodleRedm.safetensors   # testing only: license unclear for monetized use
+  default_style: comic_cartoon
+  styles:
+    comic_cartoon:       # the round_cartoon recipe (colour, light, depth) + comedy: exaggerated faces and poses
+      lora_weight: 0.55
+      character: an adult cartoon man with messy brown hair, big round glasses, a wrinkled light blue shirt, a loose red tie, a very expressive face
+      others: funny cartoon people in the same style with exaggerated features
+      style: DoodleRedm, full-frame digital cartoon illustration, funny exaggerated cartoon expression, comedic dynamic pose, squash and stretch, clean bold outlines, cel shaded, bright saturated colors, warm cinematic lighting, rim light, soft shadows, depth and perspective, detailed background, dimensional
+      negative: blurry, low quality, extra arms, extra legs, extra hands, extra limbs, deformed, broken lines, text, letters, watermark, signature, photo, photograph, realistic, 3d render, real person, celebrity, stiff pose, boring expression
+  steps: 30
+  cfg: 6.0
+  sampler: dpmpp_2m
+  scheduler: karras
+
+look:
+  motions: [zoom_in, zoom_out, pan_left, pan_right]
+  transitions: [slideleft, circleopen, zoomin, pixelize]
+  transition_seconds: 0.4
+  caption_font_size: 96
+  caption_max_words: 3
+
+pipeline:
+  research: false        # fiction: nothing to research
+  fact_check: false      # fiction: nothing to fact-check
+
+prompts: absurd_stories
+min_quality_score: 7
+review_criteria: [laugh, story, hook, punchline, pacing, originality]
+review_model: gemma4:12b-it-q4_K_M   # a different judge than the writer: no self-bias
+script_structures: [escalation, twist]
+script_mode: story       # plan rule -> setup -> 3 beats -> punchline first; stricter repeat removal
+topic_criteria: [funny, surprising, relatable, visual]
