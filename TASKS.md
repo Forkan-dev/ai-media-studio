@@ -228,5 +228,6 @@ long-form highlight (16:9), with captions and optional voice-over. Own or permit
 |---|---|
 | 2026-11-17 | Project docs created (README, ARCHITECTURE, TASKS). No code yet. |
 | 2026-11-17 | Added models/limits, video look, uniqueness rules, search, sqlite-vec. |
+| 2026-11-24 | Architecture: UI → BFF (`bff/`, :8000) → system backend (`backend/`, :8001); system split into `core` + `modules/studio` + `modules/clipforge`. Brands moved to DB (full config). Frontend: Vue (create-vue) + Tailwind, "Framewise". |
 | 2026-11-24 | Absurd Stories paused. New Phase 4A ClipForge (gaming clipper). "Next up" order: prerequisites → ClipForge → UI. |
 | 2026-11-19 | Phase 0 done. Script brain design (Ranker/Writer/Editor/Reviewer + quality gate), Mind Facts brand, parametric camera moves, SFX. Wan video removed. |

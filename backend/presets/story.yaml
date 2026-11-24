@@ -1,0 +1,77 @@
+# Preset 'story': Funny fiction stories: no research, story plan, emotion voice.
+# Every new brand starts from this; name, niche and tone come from the user.
+language: en
+format: short
+duration: 60
+voice:
+  engine: chatterbox
+  voice: af_heart
+  speed: 1.0
+  voice_ref: null
+  exaggeration: 0.5
+  cfg_weight: 0.5
+  scene_emotions: true
+images:
+  checkpoint: Juggernaut-XI-byRunDiffusion.safetensors
+  lora: DoodleRedmond-Doodle-DoodleRedm.safetensors
+  default_style: comic_cartoon
+  styles:
+    comic_cartoon:
+      lora_weight: 0.55
+      character: an adult cartoon man with messy brown hair, big round glasses, a wrinkled light blue shirt, a loose
+        red tie, a very expressive face
+      others: funny cartoon people in the same style with exaggerated features
+      style: DoodleRedm, full-frame digital cartoon illustration, funny exaggerated cartoon expression, comedic
+        dynamic pose, squash and stretch, clean bold outlines, cel shaded, bright saturated colors, warm cinematic
+        lighting, rim light, soft shadows, depth and perspective, detailed background, dimensional
+      negative: blurry, low quality, extra arms, extra legs, extra hands, extra limbs, deformed, broken lines, text,
+        letters, watermark, signature, photo, photograph, realistic, 3d render, real person, celebrity, stiff pose,
+        boring expression
+    cinematic_real:
+      lora_weight: 0.0
+      character: a person seen from behind or in silhouette, small in the frame
+      others: people in silhouette, small in the frame
+      style: cinematic photograph, ultra detailed, photorealistic, dramatic natural lighting, high dynamic range,
+        sharp focus, depth of field, epic wide composition, rich vivid colors, 8k
+      negative: cartoon, drawing, illustration, anime, doodle, sketch, painting, 3d render, cgi, text, letters,
+        watermark, signature, logo, blurry, low quality, deformed, extra limbs
+  steps: 30
+  cfg: 6.0
+  sampler: dpmpp_2m
+  scheduler: karras
+look:
+  motions:
+  - zoom_in
+  - zoom_out
+  - pan_left
+  - pan_right
+  transitions:
+  - slideleft
+  - circleopen
+  - zoomin
+  - pixelize
+  transition_seconds: 0.4
+  caption_font_size: 96
+  caption_max_words: 3
+pipeline:
+  research: false
+  fact_check: false
+preset: story
+min_quality_score: 7.0
+review_criteria:
+- laugh
+- story
+- hook
+- punchline
+- pacing
+- originality
+review_model: null
+script_structures:
+- escalation
+- twist
+script_mode: story
+topic_criteria:
+- funny
+- surprising
+- relatable
+- visual

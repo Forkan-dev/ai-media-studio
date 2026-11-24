@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/* One mid-tone theme. Use these tokens (bg-surface, text-muted, ...), never raw Tailwind grays. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: #242428;
+  --color-surface: #2e2e33;
+  --color-raised: #3a3a41;
+  --color-line: #44444c;
+  --color-fg: #f5f5f6;
+  --color-muted: #a6a6b0;
+
+  --color-accent: #ff8a4c; /* the main action only */
+  --color-good: #4ade80;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+}
+
+body {
+  @apply bg-bg font-sans text-fg antialiased;
+}
+
+/* form controls, shared by every form */
+@layer components {
+  .field {
+    @apply h-9 w-full rounded-lg border border-line bg-raised px-3 text-sm outline-none placeholder:text-muted/60 focus:border-accent;
+  }
+  textarea.field {
+    @apply h-auto resize-none py-2;
+  }
+}

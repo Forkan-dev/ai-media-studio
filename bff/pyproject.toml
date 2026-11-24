@@ -1,0 +1,12 @@
+[project]
+name = "framewise-bff"
+version = "0.1.0"
+description = "Backend for frontend: UI-shaped API, calls the system backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.165.0",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.16.3",
+    "python-multipart>=0.0.34",
+    "uvicorn[standard]>=0.54.0",
+]

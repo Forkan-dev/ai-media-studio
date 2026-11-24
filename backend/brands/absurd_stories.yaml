@@ -38,7 +38,7 @@ pipeline:
   research: false        # fiction: nothing to research
   fact_check: false      # fiction: nothing to fact-check
 
-prompts: absurd_stories
+preset: story
 min_quality_score: 7
 review_criteria: [laugh, story, hook, punchline, pacing, originality]
 review_model: gemma4:12b-it-q4_K_M   # a different judge than the writer: no self-bias

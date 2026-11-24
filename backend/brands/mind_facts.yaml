@@ -46,6 +46,6 @@ look:
   caption_font_size: 96
   caption_max_words: 3
 
-prompts: mind_facts      # folder in backend/prompts/
+preset: facts            # prompts from prompts/presets/facts/
 min_quality_score: 7     # Reviewer pass mark (1-10)
 review_criteria: [hook, accuracy, clarity, logic, relatability, pacing, originality, enjoyable]   # a comedy brand adds humor

@@ -17,8 +17,10 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-from app.config import settings
-from app.models import Base
+from app.core.config import settings
+from app.core.models import Base
+import app.modules.clipforge.models  # noqa: F401  (register tables)
+import app.modules.studio.models  # noqa: F401
 
 config.set_main_option("sqlalchemy.url", settings.database_url)  # one source of truth: app settings
 target_metadata = Base.metadata

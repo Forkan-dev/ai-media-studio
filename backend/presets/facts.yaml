@@ -1,0 +1,98 @@
+# Preset 'facts': Facts and explainers: web research, fact-check, accuracy first.
+# Every new brand starts from this; name, niche and tone come from the user.
+language: en
+format: short
+duration: 60
+voice:
+  engine: kokoro
+  voice: am_michael
+  speed: 1.05
+  voice_ref: null
+  exaggeration: 0.5
+  cfg_weight: 0.5
+  scene_emotions: false
+images:
+  checkpoint: Juggernaut-XI-byRunDiffusion.safetensors
+  lora: DoodleRedmond-Doodle-DoodleRedm.safetensors
+  default_style: round_cartoon
+  styles:
+    stick_doodle:
+      lora_weight: 0.75
+      character: a round cartoon doodle character with a big round head, a small soft body, two arms, two legs,
+        two dot eyes, no hair, no clothes
+      others: small round doodle characters with no hair and no clothes
+      style: (hand-drawn cartoon doodle:1.2), DoodleRedm, expressive cartoon doodle, clean continuous black marker
+        lines, dynamic pose, scene with background, depth and perspective, light shading, black and white with one
+        color accent, playful
+      negative: photo, photograph, photo background, realistic, 3d render, real person, celebrity, photo of a person,
+        human proportions, hair, clothes, text, letters, watermark, signature, blurry, extra arms, extra hands,
+        extra limbs, multiple limbs, broken lines, messy sketch, colorful, stiff pose, standing straight, front
+        view, symmetrical, mustache, objects with legs, objects with faces
+    round_cartoon:
+      lora_weight: 0.55
+      character: an adult cartoon man with a round bald head, an adult face, a slim adult body, thin arms and legs,
+        expressive eyes
+      others: simple cartoon people in the same style
+      style: DoodleRedm, full-frame digital cartoon illustration, clean bold outlines, cel shaded, vibrant colors,
+        warm cinematic lighting, rim light, soft shadows, depth and perspective, detailed background, dimensional
+      negative: blurry, low quality, extra arms, extra legs, extra hands, extra limbs, deformed, broken lines, text,
+        letters, watermark, signature, photo, photograph, realistic, 3d render, real person, celebrity
+    human_doodle:
+      lora_weight: 0.75
+      character: a young cartoon man with short messy black hair, a plain white t-shirt, dark jeans and white sneakers
+      others: simple cartoon people drawn in the same doodle style
+      style: (hand-drawn cartoon doodle:1.2), DoodleRedm, expressive cartoon doodle, black marker lines, dynamic
+        pose, scene with background, depth and perspective, light shading, playful, one color accent
+      negative: photo, realistic, 3d render, real person, celebrity, photo of a person, text, letters, watermark,
+        signature, blurry, deformed hands, stiff pose, standing straight, front view, symmetrical, extra limbs,
+        mustache, objects with legs, objects with faces
+    cinematic_real:
+      lora_weight: 0.0
+      character: a person seen from behind or in silhouette, small in the frame
+      others: people in silhouette, small in the frame
+      style: cinematic photograph, ultra detailed, photorealistic, dramatic natural lighting, high dynamic range,
+        sharp focus, depth of field, epic wide composition, rich vivid colors, 8k
+      negative: cartoon, drawing, illustration, anime, doodle, sketch, painting, 3d render, cgi, text, letters,
+        watermark, signature, logo, blurry, low quality, deformed, extra limbs
+  steps: 30
+  cfg: 6.0
+  sampler: dpmpp_2m
+  scheduler: karras
+look:
+  motions:
+  - zoom_in
+  - zoom_out
+  - pan_left
+  - pan_right
+  transitions:
+  - slideleft
+  - circleopen
+  - zoomin
+  - pixelize
+  transition_seconds: 0.4
+  caption_font_size: 96
+  caption_max_words: 3
+pipeline:
+  research: true
+  fact_check: true
+preset: facts
+min_quality_score: 7.0
+review_criteria:
+- hook
+- accuracy
+- clarity
+- logic
+- relatability
+- pacing
+- originality
+- enjoyable
+review_model: null
+script_structures:
+- story
+- myth_vs_fact
+script_mode: facts
+topic_criteria:
+- curiosity
+- relatable
+- evidence
+- visual
