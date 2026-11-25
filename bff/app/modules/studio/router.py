@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.modules.studio import client
 
 router = APIRouter(prefix="/studio", tags=["studio"])
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # same as the system's voice sample limit
 
 
 class BrandCreate(BaseModel):
@@ -125,7 +126,8 @@ async def voice_preview(body: dict[str, Any]):
 
 @router.post("/brands/{slug}/voice-sample")
 async def upload_voice_sample(slug: str, file: UploadFile):
-    return await client.upload_voice_sample(slug, file.filename or "voice.wav", await file.read(),
+    data = await file.read(MAX_UPLOAD_BYTES + 1)  # the system rejects anything over its limit
+    return await client.upload_voice_sample(slug, file.filename or "voice.wav", data,
                                             file.content_type or "application/octet-stream")
 
 

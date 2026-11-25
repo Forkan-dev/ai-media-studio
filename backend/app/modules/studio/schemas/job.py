@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class JobCreate(BaseModel):
-    brand: str
+    brand: str = Field(max_length=64)
     topic: str = Field(min_length=2, max_length=200)
-    style: str | None = None  # default: the brand's default style
+    style: str | None = Field(None, max_length=64)  # default: the brand's default style
     auto: bool = False  # True: no pauses at gates
 
 
@@ -29,20 +29,20 @@ class JobOut(BaseModel):
 
 
 class RedoRequest(BaseModel):
-    notes: str = ""  # instructions for this run, e.g. "make the hook shorter" (research and script use them)
+    notes: str = Field("", max_length=2000)  # instructions for this run, e.g. "make the hook shorter" (research and script use them)
 
 
 class ScriptEdit(BaseModel):
-    text: str = Field(min_length=20)
+    text: str = Field(min_length=20, max_length=8000)
 
 
 class ImageRedo(BaseModel):
-    prompt: str | None = None  # edited image prompt; None = draw the same prompt again
-    style: str | None = None  # another image style of the brand for this scene; None = keep
+    prompt: str | None = Field(None, max_length=2000)  # edited image prompt; None = draw the same prompt again
+    style: str | None = Field(None, max_length=64)  # another image style of the brand for this scene; None = keep
 
 
 class VoiceRedo(BaseModel):
-    text: str | None = None  # edited narration; None = record the same words again
+    text: str | None = Field(None, max_length=1000)  # edited narration; None = record the same words again
 
 
 class ThumbnailText(BaseModel):

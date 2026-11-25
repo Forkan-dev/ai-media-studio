@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.core.errors import InvalidStateError, NotFoundError
+from app.core.errors import InvalidInputError, InvalidStateError, NotFoundError
 from app.core.health import check_services
 from app.modules import clipforge, studio
 
@@ -25,6 +25,11 @@ def not_found(_: Request, e: NotFoundError):
 @app.exception_handler(InvalidStateError)
 def invalid_state(_: Request, e: InvalidStateError):
     return JSONResponse(status_code=409, content={"detail": str(e)})
+
+
+@app.exception_handler(InvalidInputError)
+def invalid_input(_: Request, e: InvalidInputError):
+    return JSONResponse(status_code=422, content={"detail": str(e)})
 
 
 @app.get("/health")

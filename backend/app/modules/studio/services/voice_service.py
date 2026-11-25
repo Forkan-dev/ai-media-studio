@@ -4,11 +4,12 @@ import re
 from pathlib import Path
 
 from app.core.clients.tts import synthesize
-from app.core.errors import InvalidStateError
+from app.core.errors import InvalidInputError
 from app.modules.studio.brand import Voice
 
 PREVIEW_TEXT = "Here is something surprising about your brain. Most people never notice it, but you will."
 SAMPLE_TYPES = (".wav", ".mp3", ".m4a", ".flac")
+MAX_SAMPLE_BYTES = 20 * 1024 * 1024  # 20 MB: a clone needs only 5-20 seconds of speech
 
 
 class VoiceService:
@@ -31,7 +32,9 @@ class VoiceService:
         """A voice clip to clone (Chatterbox). 5-20 seconds of clear speech works best."""
         suffix = Path(filename).suffix.lower()
         if suffix not in SAMPLE_TYPES:
-            raise InvalidStateError(f"Use an audio file: {', '.join(SAMPLE_TYPES)}")
+            raise InvalidInputError(f"Use an audio file: {', '.join(SAMPLE_TYPES)}")
+        if len(data) > MAX_SAMPLE_BYTES:
+            raise InvalidInputError("The file is too large (max 20 MB); 5-20 seconds of speech is enough")
         name = re.sub(r"[^a-z0-9_-]+", "_", Path(filename).stem.lower()).strip("_") or "voice"
         path = self._samples / brand / f"{name}{suffix}"
         path.parent.mkdir(parents=True, exist_ok=True)

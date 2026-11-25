@@ -217,6 +217,8 @@ long-form highlight (16:9), with captions and optional voice-over. Own or permit
 - [ ] Switch to Postgres via `DATABASE_URL`
 - [ ] Multi-tenant: users, `owner_id` on brands, auth
 - [ ] RBAC: roles (owner, editor, viewer) checked in the API layer; UI hides actions a role cannot do
+- [ ] API security in the BFF: authentication, rate limiting and throttling (per user / IP), request size limits
+- [ ] Tests: API (TestClient) and BFF tests; CI runs `pytest` on every push (service tests exist: `backend/tests`)
 - [ ] Object storage (S3-compatible) for `storage/`
 - [ ] Multiple workers / remote GPU pool
 - [ ] Billing and usage limits

@@ -7,12 +7,15 @@ import soundfile as sf
 from typing import Any
 
 from app.core.config import settings
-from app.core.errors import InvalidStateError
+from app.core.errors import InvalidInputError, InvalidStateError
 from app.modules.studio.models import Job, JobStatus
 from app.modules.studio.pipeline.research import ResearchResult
-from app.modules.studio.pipeline.storyboard import Storyboard
+from app.modules.studio.pipeline.storyboard import Scene, Storyboard
 from app.modules.studio.pipeline.thumbnail import FINAL_SIZE, render_text
 from app.modules.studio.services.job_service import JobService
+
+
+MAX_RESEARCH_CHARS = 60_000  # an edited research.json; the writer prompt must stay small
 
 
 def media_url(path: Path) -> str | None:
@@ -33,15 +36,16 @@ class JobArtifactService:
     def view(self, job_id: int) -> dict:
         job = self._jobs.get(job_id)
         folder = Path(job.folder)
-        sb = _json(folder / "storyboard.json")
+        sb_path = folder / "storyboard.json"
+        sb = Storyboard.model_validate_json(sb_path.read_text()) if sb_path.exists() else None
         checks = _json(folder / "checks.json") or {}
         return {
             "stages": [{"name": s.name, "gate": s.gate} for s in self._jobs.stages(job)],
             "research": _json(folder / "research.json"),
             "script": {"text": (folder / "script.txt").read_text(), "review": _json(folder / "script.json")}
             if (folder / "script.txt").exists() else None,
-            "scenes": [self._scene(folder, i, s, sb["style"], checks.get(str(i)))
-                       for i, s in enumerate(sb["scenes"], 1)] if sb else [],
+            "scenes": [self._scene(folder, sb, i, s, checks.get(str(i)))
+                       for i, s in enumerate(sb.scenes, 1)] if sb else [],
             "thumbnail": {"plan": _json(folder / "thumbnail.json"), "image": media_url(folder / "thumbnail.png")}
             if (folder / "thumbnail.json").exists() else None,
             "metadata": _json(folder / "metadata.json"),
@@ -49,19 +53,19 @@ class JobArtifactService:
         }
 
     @staticmethod
-    def _scene(folder: Path, i: int, s: dict, default_style: str, check: dict | None) -> dict:
-        audio = folder / f"scene_{i:02d}.wav"
-        return {"narration": s["narration"], "image_prompt": s["image_prompt"],
-                "style": s.get("style") or default_style, "check": check,
-                "outdated": (folder / f"scene_{i:02d}.png").exists() and s.get("drawn") is not None
-                and s.get("drawn") != f"{s.get('style') or default_style}|{s['image_prompt']}",
-                "image": media_url(folder / f"scene_{i:02d}.png"), "audio": media_url(audio),
+    def _scene(folder: Path, sb: Storyboard, i: int, scene: Scene, check: dict | None) -> dict:
+        image, audio = folder / f"scene_{i:02d}.png", folder / f"scene_{i:02d}.wav"
+        return {"narration": scene.narration, "image_prompt": scene.image_prompt, "style": sb.style_of(scene),
+                "image": media_url(image), "outdated": image.exists() and sb.is_outdated(scene), "check": check,
+                "audio": media_url(audio),
                 "seconds": round(sf.info(str(audio)).duration, 1) if audio.exists() else None}
 
     # ---------- edits at the gates ----------
 
     def save_research(self, job_id: int, research: ResearchResult) -> None:
         job = self._at_gate(job_id, "research")
+        if len(research.model_dump_json()) > MAX_RESEARCH_CHARS:
+            raise InvalidInputError("The research is too long; remove some facts")
         (Path(job.folder) / "research.json").write_text(research.model_dump_json(indent=1))
 
     def save_script(self, job_id: int, text: str) -> None:
@@ -85,14 +89,11 @@ class JobArtifactService:
             raise InvalidStateError("Scenes can be edited at the storyboard or images step")
         self._at_gate(job_id, job.stage)
         self._check_scene(job, scene)
-        path = Path(job.folder) / "storyboard.json"
-        sb = Storyboard.model_validate_json(path.read_text())
-        s = sb.scenes[scene - 1]
-        if prompt and prompt.strip():
-            s.image_prompt = prompt.strip()
         if style:
             self._jobs.brand_of(job).images.style(style)  # unknown style -> error
-            s.style = None if style == sb.style else style
+        path = Path(job.folder) / "storyboard.json"
+        sb = Storyboard.model_validate_json(path.read_text())
+        sb.edit_scene(scene - 1, prompt, style)
         path.write_text(sb.model_dump_json(indent=1))
 
     def check_images(self, job_id: int) -> Job:

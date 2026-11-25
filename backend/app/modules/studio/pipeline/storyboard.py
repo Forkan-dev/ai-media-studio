@@ -37,6 +37,19 @@ class Storyboard(BaseModel):
         """What an image depends on: if this differs from scene.drawn, the image is out of date."""
         return f"{self.style_of(scene)}|{scene.image_prompt}"
 
+    def is_outdated(self, scene: Scene) -> bool:
+        """The prompt or style changed after the image was drawn."""
+        return scene.drawn is not None and scene.drawn != self.key(scene)
+
+    def edit_scene(self, i: int, prompt: str | None = None, style: str | None = None) -> None:
+        """Change scene i's prompt and/or style (the caller checks that the style exists in the brand).
+        The storyboard's own style is stored as None, so changing the video style later still applies."""
+        scene = self.scenes[i]
+        if prompt and prompt.strip():
+            scene.image_prompt = prompt.strip()
+        if style:
+            scene.style = None if style == self.style else style
+
 
 MAX_TRIES = 3
 

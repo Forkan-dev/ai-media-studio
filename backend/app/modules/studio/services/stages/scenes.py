@@ -10,12 +10,9 @@ CHECKS_FILE = "checks.json"
 def redraw(ctx: StageContext, action: dict) -> None:
     """{"type": "redraw", "scene": n, "prompt": optional, "style": optional} - edits are saved in the storyboard."""
     sb, i = ctx.storyboard(), action["scene"] - 1
-    scene = sb.scenes[i]
-    if action.get("prompt"):
-        scene.image_prompt = action["prompt"]
     if action.get("style"):
         ctx.brand.images.style(action["style"])  # fails on an unknown style
-        scene.style = None if action["style"] == sb.style else action["style"]
+    sb.edit_scene(i, action.get("prompt"), action.get("style"))
     ctx.report(f"Drawing scene {i + 1}")
     draw_scene(ctx.brand, sb, i, ctx.folder)
     (ctx.folder / "storyboard.json").write_text(sb.model_dump_json(indent=1))
