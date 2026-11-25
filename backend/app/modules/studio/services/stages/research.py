@@ -5,6 +5,7 @@ from app.modules.studio.services.stages.base import Stage, StageContext
 class ResearchStage(Stage):
     """Web research -> research.json (editable)."""
     name = "research"
+    outputs = ("research.json",)
     gate = True
 
     def run(self, ctx: StageContext) -> list[str]:

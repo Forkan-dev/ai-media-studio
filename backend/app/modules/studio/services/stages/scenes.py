@@ -16,9 +16,9 @@ def redraw(ctx: StageContext, action: dict) -> None:
     if action.get("style"):
         ctx.brand.images.style(action["style"])  # fails on an unknown style
         scene.style = None if action["style"] == sb.style else action["style"]
-    (ctx.folder / "storyboard.json").write_text(sb.model_dump_json(indent=1))
     ctx.report(f"Drawing scene {i + 1}")
     draw_scene(ctx.brand, sb, i, ctx.folder)
+    (ctx.folder / "storyboard.json").write_text(sb.model_dump_json(indent=1))
     _forget_check(ctx, i + 1)
 
 

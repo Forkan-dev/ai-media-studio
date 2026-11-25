@@ -50,10 +50,15 @@ class Stage(ABC):
     name: str
     gate: bool = False  # pause for human approval after this stage
     redo_clean: tuple[str, ...] = ()  # file patterns deleted before a redo, so they are made again
+    outputs: tuple[str, ...] = ()  # files this stage makes; deleted when an earlier step is reopened
 
     @abstractmethod
     def run(self, ctx: StageContext) -> list[str]:
         """Do the work, write the output files. Returns flags for the human (never stops the job)."""
+
+    def has_result(self, folder: Path) -> bool:
+        """True if the stage's main output (its first output pattern) exists."""
+        return bool(self.outputs) and any(folder.glob(self.outputs[0]))
 
     def run_action(self, ctx: StageContext, action: dict) -> None:
         """A small change requested at the gate (e.g. redraw one image). Stages that offer one override this."""

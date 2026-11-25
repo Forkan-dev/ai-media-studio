@@ -1,10 +1,11 @@
 """Worker: runs queued video jobs one at a time, separate from the API (restarting the API never stops a video).
 
-uv run python -m app.worker
+uv run python -m app.worker    (or nothing: the API starts it when work is queued)
 """
 import logging
 import time
 
+from app.core.worker_launcher import beat, hold_lock
 from app.modules.studio.dependencies import job_service
 
 POLL_SECONDS = 2
@@ -14,11 +15,16 @@ log = logging.getLogger("worker")
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    lock = hold_lock()  # kept open for the worker's life
+    if lock is None:
+        log.info("another worker is already running")
+        return
     jobs = job_service()
     if interrupted := jobs.recover_interrupted():
         log.warning("jobs cut off by the last stop, marked failed (retry them): %s", interrupted)
     log.info("worker ready")
     while True:
+        beat()
         job = jobs.next_job()
         if job is None:
             time.sleep(POLL_SECONDS)

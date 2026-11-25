@@ -23,6 +23,14 @@ const acting = ref(false) // approve / redo / save in progress
 const actionError = ref('')
 
 const job = computed(() => page.value?.job)
+/** A past step being viewed (null = the current step). */
+const viewing = ref<string | null>(null)
+const shown = computed(() => viewing.value ?? job.value?.stage ?? '')
+const past = computed(() => viewing.value !== null)
+const imagesMode = computed(() => (shown.value === 'storyboard' ? 'storyboard' : 'images'))
+const canReopen = computed(
+  () => (job.value?.status === 'waiting' || job.value?.status === 'failed') && !job.value?.action,
+)
 const vertical = computed(() => page.value?.format !== 'long')
 const flags = computed(() => (job.value ? (job.value.flags[job.value.stage] ?? []) : []))
 /** At a gate: waiting for the human, or redoing one image / voice line there. */
@@ -81,12 +89,20 @@ const approve = (auto: boolean) =>
     await api.post(`/studio/jobs/${id.value}/approve?auto=${auto}`)
   })
 
+const reopen = (stage: string) =>
+  act(async () => {
+    await api.post(`/studio/jobs/${id.value}/reopen/${stage}`)
+    viewing.value = null
+  })
 const redo = (notes = '') => act(() => api.post(`/studio/jobs/${id.value}/redo`, { notes }))
 const setThumbnailText = (text: string) =>
   act(() => api.put(`/studio/jobs/${id.value}/thumbnail`, { text }))
 
-const redraw = (scene: number, prompt?: string, style?: string) =>
+/** Draws one scene with its current prompt and style (they are saved with the drawing). */
+const redraw = (scene: number, prompt: string, style: string) =>
   act(() => api.post(`/studio/jobs/${id.value}/scenes/${scene}/image`, { prompt, style }))
+const saveScene = (scene: number, prompt: string, style: string) =>
+  act(() => api.put(`/studio/jobs/${id.value}/scenes/${scene}`, { prompt, style }))
 const checkImages = () => act(() => api.post(`/studio/jobs/${id.value}/images/check`))
 const rerecord = (scene: number, text?: string) =>
   act(() => api.post(`/studio/jobs/${id.value}/scenes/${scene}/voice`, { text }))
@@ -114,9 +130,15 @@ const rerecord = (scene: number, text?: string) =>
       <StatusBadge :status="job.status" />
     </header>
 
-    <StepBar :stages="page.stages" :job="job" class="mb-6" />
+    <StepBar
+      :stages="page.stages"
+      :job="job"
+      :shown="shown"
+      class="mb-6"
+      @select="(s) => (viewing = s === job!.stage && job!.status !== 'done' ? null : s)"
+    />
 
-    <div v-if="flags.length && atGate" class="mb-5 space-y-1">
+    <div v-if="flags.length && atGate && !past" class="mb-5 space-y-1">
       <p v-for="f in flags" :key="f" class="flex items-start gap-2 text-sm text-warn">
         <AlertTriangle class="mt-0.5 size-4 shrink-0" />{{ f }}
       </p>
@@ -124,7 +146,10 @@ const rerecord = (scene: number, text?: string) =>
     <p v-if="actionError" class="mb-5 text-sm whitespace-pre-line text-bad">{{ actionError }}</p>
 
     <!-- queued / working: live progress lines, the last one is happening now -->
-    <div v-if="!atGate && (job.status === 'running' || job.status === 'queued')" class="mx-auto max-w-md py-16">
+    <div
+      v-if="!past && !atGate && (job.status === 'running' || job.status === 'queued')"
+      class="mx-auto max-w-md py-16"
+    >
       <span
         v-if="!job.progress.length"
         class="mx-auto block size-5 animate-spin rounded-full border-2 border-accent border-t-transparent"
@@ -146,55 +171,86 @@ const rerecord = (scene: number, text?: string) =>
     </div>
 
     <!-- failed -->
-    <div v-else-if="job.status === 'failed'" class="grid place-items-center gap-4 py-20 text-center">
+    <div
+      v-else-if="!past && job.status === 'failed'"
+      class="grid place-items-center gap-4 py-20 text-center"
+    >
       <AlertTriangle class="size-6 text-bad" />
       <p class="max-w-xl text-sm text-muted">{{ job.error }}</p>
       <BaseButton :loading="acting" @click="redo()"><RotateCcw class="size-4" />Retry</BaseButton>
     </div>
 
     <!-- finished -->
-    <FinalPanel v-else-if="job.status === 'done'" :page="page" :vertical="vertical" />
+    <FinalPanel v-else-if="!past && job.status === 'done'" :page="page" :vertical="vertical" />
 
-    <!-- gates: the human's turn -->
+    <!-- the current gate (the human's turn), or a past step's result (read-only, can be reopened) -->
     <template v-else>
-      <ResearchGate
-        v-if="job.stage === 'research' && page.research"
-        ref="researchGate"
-        :research="page.research"
-      />
-      <ScriptGate
-        v-else-if="job.stage === 'script' && page.script"
-        ref="scriptGate"
-        :text="page.script.text"
-        :review="page.script.review"
-      />
-      <ImagesGate
-        v-else-if="job.stage === 'storyboard' || job.stage === 'images'"
-        :mode="job.stage"
-        :scenes="page.scenes"
-        :styles="page.styles"
-        :vertical="vertical"
-        :pending="pendingScene"
-        :checking="job.action?.type === 'check'"
-        :busy="acting || !!job.action"
-        @draw="redraw"
-        @check="checkImages"
-      />
-      <VoiceGate
-        v-else-if="job.stage === 'voice'"
-        :scenes="page.scenes"
-        :pending="pendingScene"
-        @rerecord="rerecord"
-      />
-      <ThumbnailGate
-        v-else-if="job.stage === 'thumbnail' && page.thumbnail"
-        :thumbnail="page.thumbnail"
-        :vertical="vertical"
-        :saving="acting"
-        @set-text="setThumbnailText"
-      />
+      <div
+        v-if="past"
+        class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface py-2 pr-2 pl-4"
+      >
+        <p class="text-sm text-muted">
+          <span class="text-fg capitalize">{{ viewing }}</span>
+          <template v-if="job.status !== 'done'">
+            · reopening it remakes the steps after it</template
+          >
+        </p>
+        <div class="flex gap-2">
+          <BaseButton variant="ghost" @click="viewing = null">Back</BaseButton>
+          <BaseButton
+            v-if="job.status !== 'done'"
+            :disabled="!canReopen"
+            :loading="acting"
+            @click="reopen(viewing!)"
+          >
+            <RotateCcw class="size-4" />Reopen
+          </BaseButton>
+        </div>
+      </div>
+
+      <fieldset :disabled="past" class="m-0 min-w-0 border-0 p-0">
+        <ResearchGate
+          v-if="shown === 'research' && page.research"
+          ref="researchGate"
+          :research="page.research"
+        />
+        <ScriptGate
+          v-else-if="shown === 'script' && page.script"
+          ref="scriptGate"
+          :text="page.script.text"
+          :review="page.script.review"
+        />
+        <ImagesGate
+          v-else-if="shown === 'storyboard' || shown === 'images'"
+          :mode="imagesMode"
+          :scenes="page.scenes"
+          :styles="page.styles"
+          :vertical="vertical"
+          :pending="pendingScene"
+          :checking="job.action?.type === 'check'"
+          :busy="acting || !!job.action"
+          @draw="redraw"
+          @save="saveScene"
+          @check="checkImages"
+        />
+        <VoiceGate
+          v-else-if="shown === 'voice'"
+          :scenes="page.scenes"
+          :pending="pendingScene"
+          @rerecord="rerecord"
+        />
+        <ThumbnailGate
+          v-else-if="shown === 'thumbnail' && page.thumbnail"
+          :thumbnail="page.thumbnail"
+          :vertical="vertical"
+          :saving="acting"
+          @set-text="setThumbnailText"
+        />
+        <p v-else class="py-16 text-center text-sm text-muted">No result to show for this step</p>
+      </fieldset>
 
       <GateActions
+        v-if="!past"
         :busy="acting || !!job.action"
         :notes="redoNotes"
         :redo-label="redoLabels[job.stage] ?? 'Redo'"

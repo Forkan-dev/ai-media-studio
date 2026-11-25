@@ -7,6 +7,7 @@ class ImagesStage(Stage):
     """Scene images -> scene_XX.png (each scene in its own style). Missing images are drawn; a redo draws all.
     No automatic check: the human checks on request at the gate."""
     name = "images"
+    outputs = ("scene_*.png", scenes.CHECKS_FILE)
     gate = True
     redo_clean = ("scene_*.png", scenes.CHECKS_FILE)
 

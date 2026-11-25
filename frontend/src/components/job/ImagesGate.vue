@@ -16,7 +16,11 @@ defineProps<{
   busy: boolean
   mode: 'storyboard' | 'images'
 }>()
-const emit = defineEmits<{ draw: [scene: number, prompt?: string, style?: string]; check: [] }>()
+const emit = defineEmits<{
+  draw: [scene: number, prompt: string, style: string]
+  save: [scene: number, prompt: string, style: string]
+  check: []
+}>()
 </script>
 
 <template>
@@ -38,6 +42,7 @@ const emit = defineEmits<{ draw: [scene: number, prompt?: string, style?: string
         :disabled="busy"
         :label="mode === 'storyboard' ? 'Test' : 'Redraw'"
         @draw="(prompt, style) => emit('draw', i + 1, prompt, style)"
+        @save="(prompt, style) => emit('save', i + 1, prompt, style)"
       />
     </ol>
   </BaseCard>

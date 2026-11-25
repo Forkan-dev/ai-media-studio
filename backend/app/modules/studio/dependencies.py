@@ -1,6 +1,7 @@
 """Builds the services with their dependencies. Used by the API (FastAPI Depends) and the CLI."""
 from app.modules.studio.brand import Brand
 from app.core.config import settings
+from app.core import worker_launcher
 from app.core.db import SessionLocal
 from app.modules.studio.repositories import BrandRepository, JobRepository, TopicRepository
 from app.modules.studio.services.artifact_service import JobArtifactService
@@ -25,7 +26,8 @@ def topic_service() -> TopicService:
 
 
 def job_service() -> JobService:
-    return JobService(JobRepository(SessionLocal), topic_service(), video_stages, brand)
+    return JobService(JobRepository(SessionLocal), topic_service(), video_stages, brand,
+                      worker_launcher.ensure_running)
 
 
 def artifact_service() -> JobArtifactService:

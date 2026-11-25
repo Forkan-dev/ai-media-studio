@@ -5,6 +5,7 @@ from app.modules.studio.services.stages.base import Stage, StageContext
 class VoiceStage(Stage):
     """Narration per scene -> scene_XX.wav. Listen at the gate; re-record one line or all."""
     name = "voice"
+    outputs = ("scene_*.wav", "narration.wav")
     gate = True
     redo_clean = ("scene_*.wav", "narration.wav")
 

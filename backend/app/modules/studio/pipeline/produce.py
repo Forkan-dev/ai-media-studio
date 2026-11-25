@@ -48,10 +48,12 @@ def generate_scene_image(brand: Brand, style: str, prompt: str, path: Path) -> N
 
 
 def draw_scene(brand: Brand, sb: Storyboard, i: int, out: Path) -> Path:
-    """One scene's image (0-based i) in the scene's own style -> scene_XX.png."""
+    """One scene's image (0-based i) in the scene's own style -> scene_XX.png.
+    Records what it was drawn with in the storyboard (saved by the caller)."""
     scene = sb.scenes[i]
     path = out / f"scene_{i + 1:02d}.png"
     generate_scene_image(brand, sb.style_of(scene), scene.image_prompt, path)
+    scene.drawn = sb.key(scene)
     return path
 
 
@@ -61,6 +63,7 @@ def make_images(brand: Brand, sb: Storyboard, out: Path, report: Report = noop) 
     for k, i in enumerate(todo, 1):
         report(f"Drawing image {k} of {len(todo)} · scene {i + 1}")
         draw_scene(brand, sb, i, out)
+        (out / "storyboard.json").write_text(sb.model_dump_json(indent=1))
 
 
 def check_images(brand: Brand, sb: Storyboard, out: Path, report: Report = noop) -> dict[int, dict]:

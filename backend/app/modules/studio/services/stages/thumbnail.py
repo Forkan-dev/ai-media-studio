@@ -7,6 +7,7 @@ from app.modules.studio.services.stages.base import Stage, StageContext
 class ThumbnailStage(Stage):
     """Plan (symbol + text options) -> image with the vision check -> thumbnail.png."""
     name = "thumbnail"
+    outputs = ("thumbnail.json", "thumbnail.png", "thumbnail_raw.png")
     gate = True
 
     def run(self, ctx: StageContext) -> list[str]:

@@ -10,6 +10,7 @@ class StoryboardStage(Stage):
     Gate: check each scene's line, prompt and style before drawing; optionally test-draw one scene
     (kept: the images step draws only the missing ones)."""
     name = "storyboard"
+    outputs = ("storyboard.json", "metadata.json", "metadata.txt", "scene_*.png")  # test images live here too
     gate = True
     redo_clean = ("scene_*.png", scenes.CHECKS_FILE)  # new prompts: old test images no longer match
 

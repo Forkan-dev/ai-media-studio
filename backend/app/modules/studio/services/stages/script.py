@@ -9,6 +9,7 @@ class ScriptStage(Stage):
     """Write, review, fact-check -> script.txt (editable narration) + script.json (rating for the gate).
     A redo with notes edits the previous draft to follow them."""
     name = "script"
+    outputs = ("script.txt", "script.json")
     gate = True
 
     def run(self, ctx: StageContext) -> list[str]:

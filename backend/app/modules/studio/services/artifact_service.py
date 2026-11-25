@@ -53,6 +53,8 @@ class JobArtifactService:
         audio = folder / f"scene_{i:02d}.wav"
         return {"narration": s["narration"], "image_prompt": s["image_prompt"],
                 "style": s.get("style") or default_style, "check": check,
+                "outdated": (folder / f"scene_{i:02d}.png").exists() and s.get("drawn") is not None
+                and s.get("drawn") != f"{s.get('style') or default_style}|{s['image_prompt']}",
                 "image": media_url(folder / f"scene_{i:02d}.png"), "audio": media_url(audio),
                 "seconds": round(sf.info(str(audio)).duration, 1) if audio.exists() else None}
 
@@ -74,6 +76,24 @@ class JobArtifactService:
         self._check_scene(self._at_gate(job_id, stage), scene)
         return self._jobs.queue_action(job_id, stage, {"type": "redraw", "scene": scene,
                                                        "prompt": (prompt or "").strip(), "style": style})
+
+    def save_scene(self, job_id: int, scene: int, prompt: str | None, style: str | None) -> None:
+        """Change a scene's prompt / style without drawing (kept for the next drawing; the card shows that its
+        image is out of date)."""
+        job = self._jobs.get(job_id)
+        if job.stage not in ("storyboard", "images"):
+            raise InvalidStateError("Scenes can be edited at the storyboard or images step")
+        self._at_gate(job_id, job.stage)
+        self._check_scene(job, scene)
+        path = Path(job.folder) / "storyboard.json"
+        sb = Storyboard.model_validate_json(path.read_text())
+        s = sb.scenes[scene - 1]
+        if prompt and prompt.strip():
+            s.image_prompt = prompt.strip()
+        if style:
+            self._jobs.brand_of(job).images.style(style)  # unknown style -> error
+            s.style = None if style == sb.style else style
+        path.write_text(sb.model_dump_json(indent=1))
 
     def check_images(self, job_id: int) -> Job:
         """Queue the vision check of every image (on request; results show on the image cards)."""

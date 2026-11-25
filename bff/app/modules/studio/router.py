@@ -151,3 +151,13 @@ class RedoRequest(BaseModel):
 @router.post("/jobs/{job_id}/redo", status_code=202)
 async def redo_job(job_id: int, body: RedoRequest | None = None):
     return await client.redo_job(job_id, body.notes if body else "")
+
+
+@router.post("/jobs/{job_id}/reopen/{stage}")
+async def reopen_job(job_id: int, stage: str):
+    return await client.reopen_job(job_id, stage)
+
+
+@router.put("/jobs/{job_id}/scenes/{scene}", status_code=204)
+async def save_scene(job_id: int, scene: int, body: ImageRedo):
+    await client.save_scene(job_id, scene, body.prompt, body.style)

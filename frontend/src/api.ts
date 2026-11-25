@@ -127,6 +127,7 @@ export interface Scene {
   seconds: number | null
   style: string // this scene's image style
   check: { ok: boolean; reason: string } | null // vision check, when run
+  outdated: boolean // the prompt or style changed after the image was drawn
 }
 
 /** Everything the job screen shows, in one call. */

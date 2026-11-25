@@ -33,6 +33,12 @@ def approve_job(job_id: int, auto: bool = False, jobs: JobService = Depends(job_
     return jobs.advance(job_id, auto)
 
 
+@router.post("/{job_id}/reopen/{stage}", response_model=JobOut)
+def reopen_job(job_id: int, stage: str, jobs: JobService = Depends(job_service)):
+    """Go back to an earlier step; later steps' results are deleted and made again after approval."""
+    return jobs.reopen(job_id, stage)
+
+
 @router.post("/{job_id}/redo", response_model=JobOut, status_code=status.HTTP_202_ACCEPTED)
 def redo_job(job_id: int, body: RedoRequest | None = None, jobs: JobService = Depends(job_service)):
     """Queue the current stage again (e.g. regenerate all images), optionally with instructions."""
@@ -61,6 +67,12 @@ def save_script(job_id: int, body: ScriptEdit, artifacts: JobArtifactService = D
 def redraw_image(job_id: int, scene: int, body: ImageRedo, artifacts: JobArtifactService = Depends(artifact_service)):
     """Queue one scene's image again; the worker draws it, then the job waits at the images gate again."""
     return artifacts.redraw_image(job_id, scene, body.prompt, body.style)
+
+
+@router.put("/{job_id}/scenes/{scene}", status_code=status.HTTP_204_NO_CONTENT)
+def save_scene(job_id: int, scene: int, body: ImageRedo, artifacts: JobArtifactService = Depends(artifact_service)):
+    """Save a scene's prompt / style without drawing."""
+    artifacts.save_scene(job_id, scene, body.prompt, body.style)
 
 
 @router.post("/{job_id}/images/check", response_model=JobOut, status_code=status.HTTP_202_ACCEPTED)

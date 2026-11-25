@@ -23,6 +23,7 @@ class Scene(BaseModel):
     transition: str  # transition INTO this scene (unused for the first scene)
     emotion: Emotion = "calm"  # how the line is spoken (voice intensity)
     style: str | None = None  # this scene's image style; None = the storyboard's style
+    drawn: str | None = None  # "style|prompt" the current image was drawn with (None = not drawn yet)
 
 
 class Storyboard(BaseModel):
@@ -31,6 +32,10 @@ class Storyboard(BaseModel):
 
     def style_of(self, scene: Scene) -> str:
         return scene.style or self.style
+
+    def key(self, scene: Scene) -> str:
+        """What an image depends on: if this differs from scene.drawn, the image is out of date."""
+        return f"{self.style_of(scene)}|{scene.image_prompt}"
 
 
 MAX_TRIES = 3

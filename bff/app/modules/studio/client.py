@@ -96,3 +96,11 @@ async def upload_voice_sample(slug: str, filename: str, data: bytes, content_typ
 
 async def set_thumbnail_text(job_id: int, text: str) -> None:
     await system.put_empty(f"{BASE}/jobs/{job_id}/thumbnail", {"text": text})
+
+
+async def reopen_job(job_id: int, stage: str) -> dict:
+    return await system.post(f"{BASE}/jobs/{job_id}/reopen/{stage}")
+
+
+async def save_scene(job_id: int, scene: int, prompt: str | None, style: str | None) -> None:
+    await system.put_empty(f"{BASE}/jobs/{job_id}/scenes/{scene}", {"prompt": prompt, "style": style})

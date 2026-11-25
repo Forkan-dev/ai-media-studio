@@ -26,13 +26,14 @@ log = logging.getLogger(__name__)
 
 class JobService:
     def __init__(self, jobs: JobRepository, topics: TopicService, stages_for: Callable[[Brand], list[Stage]],
-                 brand: Callable[[str], Brand]):
+                 brand: Callable[[str], Brand], wake: Callable[[], None] = lambda: None):
         """`stages_for(brand)`: the brand's steps in order (fiction brands have no research step).
         `brand(slug)`: looks up a brand's config."""
         self._jobs = jobs
         self._topics = topics
         self._stages_for = stages_for
         self._brand = brand
+        self._wake = wake  # starts the worker when work is queued
 
     # ---------- queries ----------
 
@@ -82,8 +83,10 @@ class JobService:
         folder = video_folder(brand, topic, style)
         folder.mkdir(parents=True, exist_ok=True)
         self._topics.mark_used(brand, topic)
-        return self._jobs.save(Job(brand=brand.slug, topic=topic, style=style, folder=str(folder),
-                                   stage=self._stages_for(brand)[0].name, status=JobStatus.QUEUED, auto=auto))
+        job = self._jobs.save(Job(brand=brand.slug, topic=topic, style=style, folder=str(folder),
+                                  stage=self._stages_for(brand)[0].name, status=JobStatus.QUEUED, auto=auto))
+        self._wake()
+        return job
 
     def next_job(self) -> Job | None:
         """Worker: claim the oldest queued job (None if there is nothing to do)."""
@@ -152,6 +155,34 @@ class JobService:
             return self._jobs.save(job)
         return self._set_status(job, JobStatus.QUEUED)
 
+    def reopen(self, job_id: int, stage: str) -> Job:
+        """Go back to an earlier step of an unfinished job. Everything the later steps made is deleted (they are
+        made again from the changes). A gated step waits for the human (edit, redo or approve); a step without
+        a gate runs again."""
+        job = self.check_can_redo(job_id)  # waiting or failed: nothing is running
+        stages = self.stages(job)
+        names = [s.name for s in stages]
+        if stage not in names:
+            raise InvalidStateError(f"No step {stage}")
+        target, current = names.index(stage), names.index(job.stage)
+        if target > current:
+            raise InvalidStateError(f"The {stage} step has not been reached yet")
+        folder = Path(job.folder)
+        keep = set(stages[target].outputs)  # files the reopened step also owns stay (e.g. storyboard images)
+        for later in stages[target + 1:]:
+            for pattern in set(later.outputs) - keep:
+                for f in folder.glob(pattern):
+                    f.unlink()
+            job.flags.pop(later.name, None)
+        job.flags = dict(job.flags)
+        job.stage, job.auto, job.action, job.progress = stage, False, None, []
+        if stages[target].gate and stages[target].has_result(folder):
+            return self._set_status(job, JobStatus.WAITING)  # its result is still there: back at its gate
+        for pattern in stages[target].outputs:
+            for f in folder.glob(pattern):
+                f.unlink()
+        return self._set_status(job, JobStatus.QUEUED)
+
     def prepare_redo(self, job_id: int, notes: str = "") -> Job:
         """Queue the current stage again; its old outputs are deleted first.
         `notes`: the human's instructions for this run (stages that use them: research, script)."""
@@ -173,7 +204,10 @@ class JobService:
         job.status = status
         if status != JobStatus.FAILED:
             job.error = ""
-        return self._jobs.save(job)
+        job = self._jobs.save(job)
+        if status == JobStatus.QUEUED:
+            self._wake()
+        return job
 
     def _stage(self, brand: Brand, name: str) -> Stage:
         return next(s for s in self._stages_for(brand) if s.name == name)
